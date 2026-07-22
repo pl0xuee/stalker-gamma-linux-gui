@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LibCurlImpersonate/LibCurlImpersonate.csproj" />
+    <Project Path="src/Stalker.Gamma/Stalker.Gamma.csproj" />
+    <Project Path="src/StalkerGamma.Gui/StalkerGamma.Gui.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StalkerGamma.Gui.ViewModels"
+             x:Class="StalkerGamma.Gui.Views.InstallView"
+             x:DataType="vm:InstallViewModel">
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Install" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="{Binding AnomalyPath, StringFormat='Anomaly: {0}'}" Opacity="0.8"/>
+            <TextBlock Text="{Binding GammaPath, StringFormat='GAMMA: {0}'}" Opacity="0.8"/>
+            <TextBlock Text="{Binding CachePath, StringFormat='Cache: {0}'}" Opacity="0.8"/>
+            <TextBlock Text="Paths come from the active profile (Settings page)." FontSize="12" Opacity="0.6"/>
+        </StackPanel>
+
+        <WrapPanel Grid.Row="1" Margin="0,12,0,0">
+            <CheckBox Content="Minimal (delete cache after extract)" IsChecked="{Binding Minimal}" Margin="0,0,16,0"/>
+            <CheckBox Content="Offline (from cache)" IsChecked="{Binding Offline}" Margin="0,0,16,0"/>
+            <CheckBox Content="Skip GitHub downloads" IsChecked="{Binding SkipGithubDownloads}" Margin="0,0,16,0"/>
+            <CheckBox Content="Skip extract on hash match" IsChecked="{Binding SkipExtractOnHashMatch}" Margin="0,0,16,0"/>
+            <CheckBox Content="Preserve user.ltx" IsChecked="{Binding PreserveUserSettings}" Margin="0,0,16,0"/>
+            <CheckBox Content="Preserve MCM settings" IsChecked="{Binding PreserveMcmSettings}" Margin="0,0,16,0"/>
+        </WrapPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12">
+            <Button Content="Full install" Classes="accent" Command="{Binding FullInstallCommand}"/>
+            <Button Content="Anomaly only" Command="{Binding AnomalyInstallCommand}"/>
+            <Button Content="Verify Anomaly" Command="{Binding CheckAnomalyCommand}"/>
+            <Button Content="Purge shader cache" Command="{Binding PurgeShaderCacheCommand}"/>
+            <Button Content="Delete ReShade" Command="{Binding DeleteReshadeCommand}"/>
+            <TextBlock Text="{Binding CheckResultText}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="3" ItemsSource="{Binding ModRows}" IsReadOnly="True"
+                  AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Mod" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="120"/>
+                <DataGridTemplateColumn Header="Progress" Width="220">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:ModProgressRow">
+                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
+                                         Height="12" Margin="4,0" ShowProgressText="True"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

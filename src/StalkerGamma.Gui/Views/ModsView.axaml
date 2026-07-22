@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StalkerGamma.Gui.ViewModels"
+             x:Class="StalkerGamma.Gui.Views.ModsView"
+             x:DataType="vm:ModsViewModel">
+    <Grid RowDefinitions="Auto,Auto,*">
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Mods" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="{Binding ProfileName, StringFormat='MO2 profile: {0}'}" Opacity="0.8"/>
+            <TextBlock Text="{Binding StatusText}" Opacity="0.8"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,12">
+            <Button Content="Refresh" Command="{Binding RefreshCommand}"/>
+            <Button Content="Delete selected" Command="{Binding DeleteSelectedCommand}"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="2" ItemsSource="{Binding Mods}"
+                  SelectedItem="{Binding SelectedMod}"
+                  AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Enabled" Width="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:ModRow">
+                            <CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

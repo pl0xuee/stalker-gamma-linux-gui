@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StalkerGamma.Gui.ViewModels"
+             x:Class="StalkerGamma.Gui.Views.SteamSetupView"
+             x:DataType="vm:SteamSetupViewModel">
+    <StackPanel Spacing="8">
+        <TextBlock Text="Steam" FontSize="22" FontWeight="Bold"/>
+        <TextBlock Text="{Binding StatusText}" Opacity="0.8"/>
+    </StackPanel>
+</UserControl>

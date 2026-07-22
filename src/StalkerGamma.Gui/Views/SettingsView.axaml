@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StalkerGamma.Gui.ViewModels"
+             xmlns:m="using:StalkerGamma.Gui.Models"
+             x:Class="StalkerGamma.Gui.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+    <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="240,*">
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="4">
+            <TextBlock Text="Settings" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="{Binding StatusText}" Opacity="0.8"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,12">
+            <Button Content="New profile" Command="{Binding NewProfileCommand}"/>
+            <Button Content="Set active" Command="{Binding SetActiveCommand}"/>
+            <Button Content="Save" Classes="accent" Command="{Binding SaveCommand}"/>
+            <Button Content="Delete" Command="{Binding DeleteSelectedCommand}"/>
+        </StackPanel>
+
+        <ListBox Grid.Row="2" Grid.Column="0" Margin="0,0,12,0"
+                 ItemsSource="{Binding Profiles}"
+                 SelectedItem="{Binding SelectedProfile}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="m:CliProfile">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="●" IsVisible="{Binding Active}" Foreground="LimeGreen"/>
+                        <TextBlock Text="{Binding ProfileName}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ScrollViewer Grid.Row="2" Grid.Column="1" IsVisible="{Binding HasSelection}">
+            <StackPanel Spacing="8" DataContext="{Binding SelectedProfile}" x:DataType="m:CliProfile">
+                <TextBlock Text="Profile name"/>
+                <TextBox Text="{Binding ProfileName}"/>
+                <TextBlock Text="Anomaly directory"/>
+                <TextBox Text="{Binding Anomaly}"/>
+                <TextBlock Text="GAMMA directory"/>
+                <TextBox Text="{Binding Gamma}"/>
+                <TextBlock Text="Cache directory"/>
+                <TextBox Text="{Binding Cache}"/>
+                <TextBlock Text="MO2 profile"/>
+                <TextBox Text="{Binding Mo2Profile}"/>
+                <TextBlock Text="Download threads"/>
+                <NumericUpDown Value="{Binding DownloadThreads}" Minimum="1" Maximum="20"
+                               FormatString="0" Width="140" HorizontalAlignment="Left"/>
+                <Expander Header="Advanced (URLs and branches)">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Text="ModPackMaker URL"/>
+                        <TextBox Text="{Binding ModPackMakerUrl}"/>
+                        <TextBlock Text="ModList URL"/>
+                        <TextBox Text="{Binding ModListUrl}"/>
+                        <TextBlock Text="gamma_setup repo / branch"/>
+                        <TextBox Text="{Binding GammaSetupRepoUrl}"/>
+                        <TextBox Text="{Binding GammaSetupRepoBranch}"/>
+                        <TextBlock Text="Stalker_GAMMA repo / branch"/>
+                        <TextBox Text="{Binding StalkerGammaRepoUrl}"/>
+                        <TextBox Text="{Binding StalkerGammaRepoBranch}"/>
+                        <TextBlock Text="gamma_large_files repo / branch"/>
+                        <TextBox Text="{Binding GammaLargeFilesRepoUrl}"/>
+                        <TextBox Text="{Binding GammaLargeFilesRepoBranch}"/>
+                        <TextBlock Text="teivaz_anomaly_gunslinger repo / branch"/>
+                        <TextBox Text="{Binding TeivazAnomalyGunslingerRepoUrl}"/>
+                        <TextBox Text="{Binding TeivazAnomalyGunslingerRepoBranch}"/>
+                        <TextBlock Text="Python API URL"/>
+                        <TextBox Text="{Binding PythonApiUrl}"/>
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
