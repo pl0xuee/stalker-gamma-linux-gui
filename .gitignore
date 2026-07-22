@@ -1,0 +1,10 @@
+bin/
+obj/
+artifacts/
+*.user
+.vs/
+.idea/
+publish/
+*.AppImage
+appimagetool-*.AppImage
+packaging/StalkerGammaGui.AppDir/usr/

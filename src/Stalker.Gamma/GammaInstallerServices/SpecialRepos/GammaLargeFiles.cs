@@ -1,0 +1,138 @@
+﻿using Stalker.Gamma.Models;
+using Stalker.Gamma.Services;
+using Stalker.Gamma.Utilities;
+
+namespace Stalker.Gamma.GammaInstallerServices.SpecialRepos;
+
+public interface IGammaLargeFilesRepo : IDownloadableRecord;
+
+public class GammaLargeFilesRepo(
+    GammaProgress gammaProgress,
+    string gammaDir,
+    string url,
+    string branch,
+    GitService gitService
+) : IGammaLargeFilesRepo
+{
+    public string Name { get; } = "gamma_large_files_v2";
+    public string ArchiveName { get; } = "";
+    public string DownloadPath => Path.Join(_gammaDir, "downloads", $"{Name}.git");
+    public string TempDir => Path.Join(_gammaDir, "downloads", Name);
+    public bool Downloaded { get; set; }
+    protected string Url = url;
+    public string Branch { get; } = branch;
+    private readonly GammaProgress _gammaProgress = gammaProgress;
+    private readonly string _gammaDir = gammaDir;
+    private readonly GitService _gitService = gitService;
+    private string DestinationDir => Path.Join(_gammaDir, "mods");
+
+    public virtual Task DownloadAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            if (Directory.Exists(DownloadPath))
+            {
+                _gitService.FetchGitRepo(
+                    DownloadPath,
+                    ct: ct,
+                    onProgress: pct => OnProgress(GammaProgressType.Download, pct)
+                );
+            }
+            else
+            {
+                _gitService.CloneGitRepo(
+                    DownloadPath,
+                    Url,
+                    onProgress: pct => OnProgress(GammaProgressType.Download, pct),
+                    ct: ct,
+                    bare: true
+                );
+            }
+
+            Downloaded = true;
+        }
+        catch (Exception e)
+        {
+            throw new SpecialRepoException(
+                $"""
+                Error downloading from Gamma Large Files Repo
+                Url: {Url}
+                Branch: {Branch}
+                Download Path: {DownloadPath}
+                Destination Dir: {DestinationDir}
+                Exception Message: {e.Message}
+                """,
+                e
+            );
+        }
+        return Task.CompletedTask;
+    }
+
+    public async Task ExpandFilesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            await GitService.ExtractAsync(
+                DownloadPath,
+                TempDir,
+                branch: Branch,
+                ct: ct,
+                onProgress: pct => OnProgress(GammaProgressType.Extract, pct)
+            );
+        }
+        catch (Exception e)
+        {
+            throw new SpecialRepoException(
+                $"""
+                Error expanding files from Gamma Large Files Repo
+                Url: {Url}
+                Branch: {Branch}
+                Download Path: {DownloadPath}
+                Destination Dir: {DestinationDir}
+                Exception Message: {e.Message}
+                """,
+                e
+            );
+        }
+    }
+
+    public virtual Task ExtractAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            DirUtils.CopyDirectory(
+                TempDir,
+                DestinationDir,
+                onProgress: pct => OnProgress(GammaProgressType.Extract, pct),
+                moveFile: true,
+                cancellationToken: cancellationToken
+            );
+        }
+        finally
+        {
+            DirUtils.NormalizePermissions(TempDir);
+            Directory.Delete(TempDir, true);
+        }
+
+        _gammaProgress.IncrementCompletedMods();
+        return Task.CompletedTask;
+    }
+
+    private void OnProgress(GammaProgressType operation, double pct) =>
+        _gammaProgress.OnProgressChanged(ProgFunc(operation, pct));
+
+    private GammaProgress.GammaInstallProgressEventArgs ProgFunc(
+        GammaProgressType operation,
+        double pct
+    ) =>
+        new()
+        {
+            Name = Name,
+            ProgressType = operation,
+            Progress = pct,
+            Url = Url,
+            ArchiveName = ArchiveName,
+            DownloadPath = DownloadPath,
+            ExtractPath = DestinationDir,
+        };
+}

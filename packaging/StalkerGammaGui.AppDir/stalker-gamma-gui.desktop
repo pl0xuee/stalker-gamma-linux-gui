@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Stalker GAMMA GUI
+Exec=StalkerGamma.Gui
+Icon=stalker-gamma-gui
+Type=Application
+Categories=Game;Utility;
+Terminal=false

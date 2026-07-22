@@ -1,0 +1,317 @@
+using System.Security.Cryptography;
+using System.Text.Json;
+using Stalker.Gamma.GammaInstallerServices;
+using Stalker.Gamma.Models;
+using Stalker.Gamma.Services;
+using Stalker.Gamma.Utilities;
+using GetReleaseByTagCtx = Stalker.Gamma.ModOrganizer.DownloadModOrganizer.Entities.Github.GetReleaseByTagCtx;
+
+namespace Stalker.Gamma.ModOrganizer.DownloadModOrganizer;
+
+public interface IDownloadModOrganizerService
+{
+    Task DownloadAsync(
+        string version = "v2.5.2",
+        string cachePath = "",
+        string? extractPath = null,
+        CancellationToken cancellationToken = default
+    );
+
+    void DeleteArchive(string cachePath = "");
+
+    Task ExtractAsync(
+        string version = "v2.5.2",
+        string cachePath = "",
+        string? extractPath = null,
+        string dlUrl = "",
+        CancellationToken cancellationToken = default
+    );
+}
+
+public class DownloadModOrganizerService(
+    IHttpClientFactory hcf,
+    ArchiveService archiveService,
+    GammaProgress gammaProgress,
+    StalkerGammaSettings settings
+) : IDownloadModOrganizerService
+{
+    public async Task ExtractAsync(
+        string version = "v2.5.2",
+        string cachePath = "",
+        string? extractPath = null,
+        string dlUrl = "",
+        CancellationToken cancellationToken = default
+    )
+    {
+        extractPath ??= Path.Join(Path.GetDirectoryName(AppContext.BaseDirectory), "..");
+        Directory.CreateDirectory(cachePath);
+        Directory.CreateDirectory(extractPath);
+
+        var mo2ArchivePath = Path.Join(cachePath, $"ModOrganizer.{version}.7z");
+        if (!File.Exists(mo2ArchivePath))
+        {
+            throw new DownloadModOrganizerException($"Archive {mo2ArchivePath} not found");
+        }
+
+        foreach (var folder in _foldersToDelete)
+        {
+            var path = Path.Join(extractPath, folder);
+            if (!Directory.Exists(path))
+            {
+                continue;
+            }
+
+            new DirectoryInfo(path)
+                .GetDirectories("*", SearchOption.AllDirectories)
+                .ToList()
+                .ForEach(di =>
+                {
+                    di.Attributes &= ~FileAttributes.ReadOnly;
+                    di.GetFiles("*", SearchOption.TopDirectoryOnly)
+                        .ToList()
+                        .ForEach(fi => fi.IsReadOnly = false);
+                });
+            Directory.Delete(path, true);
+        }
+
+        foreach (var file in _filesToDelete)
+        {
+            var path = Path.Join(extractPath, file);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+
+        await archiveService.ExtractAsync(
+            mo2ArchivePath,
+            extractPath,
+            pct =>
+                gammaProgress.OnProgressChanged(
+                    new GammaProgress.GammaInstallProgressEventArgs
+                    {
+                        Name = "ModOrganizer",
+                        ProgressType = GammaProgressType.Extract,
+                        Progress = pct,
+                        Url = dlUrl,
+                        ArchiveName = Path.GetFileName(mo2ArchivePath),
+                        DownloadPath = cachePath,
+                        ExtractPath = mo2ArchivePath,
+                    }
+                ),
+            ct: cancellationToken
+        );
+    }
+
+    public async Task DownloadAsync(
+        string version = "v2.5.2",
+        string cachePath = "",
+        string? extractPath = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        extractPath ??= Path.Join(Path.GetDirectoryName(AppContext.BaseDirectory), "..");
+        Directory.CreateDirectory(cachePath);
+        Directory.CreateDirectory(extractPath);
+
+        var hc = hcf.CreateClient("dlAddon");
+        var getReleaseByTagResponse = await hc.GetAsync(
+            $"https://api.github.com/repos/ModOrganizer2/modorganizer/releases/tags/{version}",
+            cancellationToken
+        );
+        var getReleaseByTag =
+            await JsonSerializer.DeserializeAsync<Entities.Github.GetReleaseByTag>(
+                await getReleaseByTagResponse.Content.ReadAsStreamAsync(cancellationToken),
+                jsonTypeInfo: GetReleaseByTagCtx.Default.GetReleaseByTag,
+                cancellationToken
+            );
+        var dlUrl = getReleaseByTag
+            ?.Assets?.FirstOrDefault(x =>
+                x.Name == $"Mod.Organizer-{(version.StartsWith('v') ? version[1..] : version)}.7z"
+            )
+            ?.BrowserDownloadUrl;
+        if (string.IsNullOrWhiteSpace(dlUrl))
+        {
+            return;
+        }
+
+        var mo2ArchivePath = Path.Join(cachePath, $"ModOrganizer.{getReleaseByTag!.Name!}.7z");
+
+        if (File.Exists(mo2ArchivePath))
+        {
+            switch (version)
+            {
+                case "v2.4.4":
+                    if (
+                        await HashUtils.HashFile(
+                            mo2ArchivePath,
+                            HashAlgorithmName.MD5,
+                            pct =>
+                                gammaProgress.OnProgressChanged(
+                                    new GammaProgress.GammaInstallProgressEventArgs
+                                    {
+                                        Name = "ModOrganizer",
+                                        ProgressType = GammaProgressType.CheckMd5,
+                                        Progress = pct,
+                                        Url = dlUrl,
+                                        ArchiveName = Path.GetFileName(mo2ArchivePath),
+                                        DownloadPath = cachePath,
+                                        ExtractPath = mo2ArchivePath,
+                                    }
+                                ),
+                            cancellationToken
+                        ) != settings.ModOrganizer244Md5
+                    )
+                    {
+                        await DownloadFileFast.DownloadAsync(
+                            hc,
+                            dlUrl,
+                            mo2ArchivePath,
+                            onProgress: pct =>
+                                gammaProgress.OnProgressChanged(
+                                    new GammaProgress.GammaInstallProgressEventArgs
+                                    {
+                                        Name = "ModOrganizer",
+                                        ProgressType = GammaProgressType.Download,
+                                        Progress = pct,
+                                        Url = dlUrl,
+                                        ArchiveName = Path.GetFileName(mo2ArchivePath),
+                                        DownloadPath = cachePath,
+                                        ExtractPath = mo2ArchivePath,
+                                    }
+                                ),
+                            cancellationToken
+                        );
+                    }
+
+                    break;
+                case "v2.5.2":
+                    if (
+                        await HashUtils.HashFile(
+                            mo2ArchivePath,
+                            HashAlgorithmName.MD5,
+                            pct =>
+                                gammaProgress.OnProgressChanged(
+                                    new GammaProgress.GammaInstallProgressEventArgs
+                                    {
+                                        Name = "ModOrganizer",
+                                        ProgressType = GammaProgressType.CheckMd5,
+                                        Progress = pct,
+                                        Url = dlUrl,
+                                        ArchiveName = Path.GetFileName(mo2ArchivePath),
+                                        DownloadPath = cachePath,
+                                        ExtractPath = mo2ArchivePath,
+                                    }
+                                ),
+                            cancellationToken
+                        ) != settings.ModOrganizer252Md5
+                    )
+                    {
+                        await DownloadFileFast.DownloadAsync(
+                            hc,
+                            dlUrl,
+                            mo2ArchivePath,
+                            onProgress: pct =>
+                                gammaProgress.OnProgressChanged(
+                                    new GammaProgress.GammaInstallProgressEventArgs
+                                    {
+                                        Name = "ModOrganizer",
+                                        ProgressType = GammaProgressType.Download,
+                                        Progress = pct,
+                                        Url = dlUrl,
+                                        ArchiveName = Path.GetFileName(mo2ArchivePath),
+                                        DownloadPath = cachePath,
+                                        ExtractPath = mo2ArchivePath,
+                                    }
+                                ),
+                            cancellationToken
+                        );
+                    }
+                    break;
+            }
+        }
+        else
+        {
+            await DownloadFileFast.DownloadAsync(
+                hc,
+                dlUrl,
+                mo2ArchivePath,
+                onProgress: pct =>
+                    gammaProgress.OnProgressChanged(
+                        new GammaProgress.GammaInstallProgressEventArgs
+                        {
+                            Name = "ModOrganizer",
+                            ProgressType = GammaProgressType.Download,
+                            Progress = pct,
+                            Url = dlUrl,
+                            ArchiveName = Path.GetFileName(mo2ArchivePath),
+                            DownloadPath = cachePath,
+                            ExtractPath = mo2ArchivePath,
+                        }
+                    ),
+                cancellationToken
+            );
+        }
+    }
+
+    public void DeleteArchive(string cachePath = "")
+    {
+        List<string> versions = ["v2.5.2", "v2.4.4"];
+        foreach (var version in versions)
+        {
+            var mo2ArchivePath = Path.Join(cachePath, $"ModOrganizer.{version}.7z");
+            if (File.Exists(mo2ArchivePath))
+            {
+                File.Delete(mo2ArchivePath);
+            }
+        }
+    }
+
+    private readonly IReadOnlyList<string> _foldersToDelete =
+    [
+        "dlls",
+        "explorer++",
+        "licenses",
+        "loot",
+        "NCC",
+        "platforms",
+        "plugins",
+        "pythoncore",
+        "QtQml",
+        "QtQuick.2",
+        "resources",
+        "styles",
+        "stylesheets",
+        "translations",
+        "tutorials",
+    ];
+
+    private readonly IReadOnlyList<string> _filesToDelete =
+    [
+        "boost_python38-vc142-mt-x64-1_75.dll",
+        "dump_running_process.bat",
+        "helper.exe",
+        "libcrypto-1_1-x64.dll",
+        "libffi-7.dll",
+        "libssl-1_1-x64.dll",
+        "ModOrganizer.exe",
+        "nxmhandler.exe",
+        "python38.dll",
+        "pythoncore.zip",
+        "QtWebEngineProcess.exe",
+        "uibase.dll",
+        "usvfs_proxy_x64.exe",
+        "usvfs_proxy_x86.exe",
+        "usvfs_x64.dll",
+        "usvfs_x86.dll",
+    ];
+}
+
+public class DownloadModOrganizerException : Exception
+{
+    public DownloadModOrganizerException(string msg)
+        : base(msg) { }
+
+    public DownloadModOrganizerException(string msg, Exception innerException)
+        : base(msg, innerException) { }
+}
