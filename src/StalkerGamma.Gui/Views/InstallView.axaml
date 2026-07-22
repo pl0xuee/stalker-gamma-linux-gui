@@ -11,9 +11,9 @@
 
         <!-- Hero: one-click -->
         <Border Grid.Row="1" Classes="card-hero" Margin="0,0,0,14">
-            <Grid ColumnDefinitions="4,*">
-                <Rectangle Grid.Column="0" Fill="{StaticResource ZoneAmber}" RadiusX="2" RadiusY="2"
-                           Margin="0,2,14,2"/>
+            <Grid ColumnDefinitions="Auto,*">
+                <Rectangle Grid.Column="0" Width="4" Fill="{StaticResource ZoneAmber}"
+                           RadiusX="2" RadiusY="2" Margin="0,2,16,2"/>
                 <StackPanel Grid.Column="1" Spacing="10">
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <Button Content="⚡ One-click install" Classes="accent" FontSize="15"
