@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -56,18 +57,29 @@ public partial class InstallViewModel : ViewModelBase
     [ObservableProperty]
     public partial string CheckResultText { get; set; } = "";
 
+    [ObservableProperty]
+    public partial bool SetupSteamAfter { get; set; } = true;
+
     public InstallViewModel(
         OperationRunner runner,
         SettingsService settings,
         AnomalyService anomalyService,
         LogService log,
-        GammaProgress gammaProgress
+        GammaProgress gammaProgress,
+        Services.Steam.SteamLocator steamLocator,
+        Services.Steam.CompatToolCatalog compatToolCatalog,
+        Services.Steam.SteamIntegrationService steamIntegration,
+        Services.Steam.ProtontricksService protontricks
     )
     {
         _runner = runner;
         _settings = settings;
         _anomalyService = anomalyService;
         _log = log;
+        _steamLocator = steamLocator;
+        _compatToolCatalog = compatToolCatalog;
+        _steamIntegration = steamIntegration;
+        _protontricks = protontricks;
 
         // Batch (not sample) so no per-mod terminal state is lost, then update rows on the UI thread.
         Observable
@@ -106,32 +118,151 @@ public partial class InstallViewModel : ViewModelBase
         Dispatcher.UIThread.Post(ModRows.Clear);
         _rowLookup.Clear();
 
+        await _runner.RunAsync("Full install", (sp, ct) => FullInstallCoreAsync(sp, p, ct));
+    }
+
+    /// <summary>One click: default profile if needed → full install → Steam setup.</summary>
+    [RelayCommand]
+    private async Task OneClickInstallAsync()
+    {
+        var p = _settings.ActiveProfile;
+        if (p is null)
+        {
+            p = CreateDefaultProfile();
+            await _settings.SaveAsync();
+            RefreshProfilePaths();
+            _log.Append(
+                $"Created default profile '{p.ProfileName}' (Anomaly: {p.Anomaly}, GAMMA: {p.Gamma})"
+            );
+        }
+
+        Services.Steam.SteamSetupContext? steamCtx = null;
+        if (SetupSteamAfter)
+        {
+            steamCtx = BuildSteamContext(p, out var problem);
+            if (steamCtx is null)
+            {
+                _log.Append($"Cannot set up Steam: {problem}");
+                _log.Append("Fix the issue or untick 'Set up Steam afterwards', then retry.");
+                return;
+            }
+        }
+
+        Dispatcher.UIThread.Post(ModRows.Clear);
+        _rowLookup.Clear();
+
         await _runner.RunAsync(
-            "Full install",
+            "One-click install",
             async (sp, ct) =>
             {
-                var installer = Offline
-                    ? sp.GetRequiredService<OfflineGammaInstaller>()
-                    : sp.GetRequiredService<IGammaInstaller>();
-                var args = GammaInstallerArgs
-                    .Create(p.Anomaly, p.Gamma, p.Cache)
-                    .WithCancellationToken(ct)
-                    .WithDownloadGithubArchives(!SkipGithubDownloads)
-                    .WithSkipExtractOnHashMatch(SkipExtractOnHashMatch)
-                    .WithMo2Profile(p.Mo2Profile)
-                    .WithMinimal(Minimal)
-                    .WithModPackMakerPath(NullIfEmpty(ModPackMakerPath))
-                    .WithModListPath(NullIfEmpty(ModListPath))
-                    .WithPreserveUserLtx(PreserveUserSettings)
-                    .WithPreserveMcmSettings(PreserveMcmSettings)
-                    .WithExperimentalPythonServerSettings(
-                        _settings.Settings.ExperimentalModDbSettings.ToServerSettings()
-                    )
-                    .Build();
-                args.GroupedAddonRecords = await installer.BuildGroupedAddonRecordsAsync(args);
-                args.AnomalyRecord = installer.BuildAnomalyRecord(args);
-                installer.BuildSpecialRepoRecords(args);
-                await installer.InstallAsync(args);
+                await FullInstallCoreAsync(sp, p, ct);
+                if (steamCtx is not null)
+                {
+                    _log.Append("Install finished — starting Steam setup");
+                    await _steamIntegration.RunAsync(steamCtx, ReportSteamStep, ct);
+                    _log.Append(
+                        $"All done! Launch '{steamCtx.AppName}' from your Steam library to play."
+                    );
+                }
+            }
+        );
+    }
+
+    private async Task FullInstallCoreAsync(
+        IServiceProvider sp,
+        Models.CliProfile p,
+        System.Threading.CancellationToken ct
+    )
+    {
+        var installer = Offline
+            ? sp.GetRequiredService<OfflineGammaInstaller>()
+            : sp.GetRequiredService<IGammaInstaller>();
+        var args = GammaInstallerArgs
+            .Create(p.Anomaly, p.Gamma, p.Cache)
+            .WithCancellationToken(ct)
+            .WithDownloadGithubArchives(!SkipGithubDownloads)
+            .WithSkipExtractOnHashMatch(SkipExtractOnHashMatch)
+            .WithMo2Profile(p.Mo2Profile)
+            .WithMinimal(Minimal)
+            .WithModPackMakerPath(NullIfEmpty(ModPackMakerPath))
+            .WithModListPath(NullIfEmpty(ModListPath))
+            .WithPreserveUserLtx(PreserveUserSettings)
+            .WithPreserveMcmSettings(PreserveMcmSettings)
+            .WithExperimentalPythonServerSettings(
+                _settings.Settings.ExperimentalModDbSettings.ToServerSettings()
+            )
+            .Build();
+        args.GroupedAddonRecords = await installer.BuildGroupedAddonRecordsAsync(args);
+        args.AnomalyRecord = installer.BuildAnomalyRecord(args);
+        installer.BuildSpecialRepoRecords(args);
+        await installer.InstallAsync(args);
+    }
+
+    private Models.CliProfile CreateDefaultProfile()
+    {
+        var gamesDir = Path.Join(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "Games",
+            "GAMMA"
+        );
+        var profile = new Models.CliProfile
+        {
+            ProfileName = "Gamma",
+            Active = true,
+            Anomaly = Path.Join(gamesDir, "anomaly"),
+            Gamma = Path.Join(gamesDir, "gamma"),
+            Cache = Path.Join(gamesDir, "cache"),
+        };
+        foreach (var other in _settings.Settings.Profiles)
+        {
+            other.Active = false;
+        }
+        _settings.Settings.Profiles.Add(profile);
+        return profile;
+    }
+
+    private Services.Steam.SteamSetupContext? BuildSteamContext(
+        Models.CliProfile p,
+        out string problem
+    )
+    {
+        problem = "";
+        var steam = _steamLocator.Locate();
+        if (steam is null)
+        {
+            problem = "native Steam installation not found.";
+            return null;
+        }
+        if (!_protontricks.IsAvailable(out _))
+        {
+            problem = "protontricks not found (sudo pacman -S protontricks).";
+            return null;
+        }
+        var tool = _compatToolCatalog.PickBest(_compatToolCatalog.Scan(steam.Root));
+        if (tool is null)
+        {
+            problem = "no Proton found in compatibilitytools.d (install proton-cachyos or GE-Proton).";
+            return null;
+        }
+        // ModOrganizer.exe existence is checked after the install phase creates it.
+        return new Services.Steam.SteamSetupContext(
+            steam,
+            tool,
+            "STALKER GAMMA",
+            Path.GetFullPath(Path.Join(p.Gamma, "ModOrganizer.exe")),
+            Services.Steam.SteamIntegrationService.BuildLaunchOptions([p.Anomaly, p.Gamma, p.Cache])
+        );
+    }
+
+    private void ReportSteamStep(int index, Services.Steam.StepState state, string detail)
+    {
+        var name = Services.Steam.SteamIntegrationService.StepNames[index];
+        _log.Append(
+            state switch
+            {
+                Services.Steam.StepState.Running => $"Steam setup: {name}…",
+                Services.Steam.StepState.Ok => $"Steam setup: {name} ✅",
+                _ => $"Steam setup: {name} FAILED — {detail}",
             }
         );
     }
@@ -247,5 +378,9 @@ public partial class InstallViewModel : ViewModelBase
     private readonly SettingsService _settings;
     private readonly AnomalyService _anomalyService;
     private readonly LogService _log;
+    private readonly Services.Steam.SteamLocator _steamLocator;
+    private readonly Services.Steam.CompatToolCatalog _compatToolCatalog;
+    private readonly Services.Steam.SteamIntegrationService _steamIntegration;
+    private readonly Services.Steam.ProtontricksService _protontricks;
     private readonly Dictionary<string, ModProgressRow> _rowLookup = [];
 }

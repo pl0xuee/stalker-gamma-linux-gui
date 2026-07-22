@@ -52,6 +52,7 @@ public partial class App : Application
             .AddSingleton<Services.Steam.SteamProcessService>()
             .AddSingleton<Services.Steam.ProtonPrefixService>()
             .AddSingleton<Services.Steam.ProtontricksService>()
+            .AddSingleton<Services.Steam.SteamIntegrationService>()
             .AddSingleton<MainViewModel>()
             .AddSingleton<InstallViewModel>()
             .AddSingleton<UpdatesViewModel>()

@@ -23,20 +23,24 @@ public partial class SetupStep(string name) : ObservableObject
     public partial string Detail { get; set; } = "";
 
     public void Reset() => (Status, Detail) = ("•", "");
-    public void Running() => Status = "⏳";
-    public void Ok(string detail = "") => (Status, Detail) = ("✅", detail);
-    public void Fail(string detail) => (Status, Detail) = ("❌", detail);
+
+    public void Apply(StepState state, string detail) =>
+        (Status, Detail) = (
+            state switch
+            {
+                StepState.Running => "⏳",
+                StepState.Ok => "✅",
+                _ => "❌",
+            },
+            detail
+        );
 }
 
 public partial class SteamSetupViewModel : ViewModelBase
 {
     public ObservableCollection<SetupStep> Steps { get; } =
     [
-        new SetupStep("Shut down Steam"),
-        new SetupStep("Write Steam shortcut + compatibility tool"),
-        new SetupStep("Restart Steam"),
-        new SetupStep("Create Proton prefix"),
-        new SetupStep("Install prerequisites (protontricks)"),
+        .. SteamIntegrationService.StepNames.Select(n => new SetupStep(n)),
     ];
 
     public ObservableCollection<CompatTool> CompatTools { get; } = [];
@@ -61,24 +65,16 @@ public partial class SteamSetupViewModel : ViewModelBase
         OperationRunner runner,
         SteamLocator steamLocator,
         CompatToolCatalog compatToolCatalog,
-        ShortcutsVdfService shortcutsVdf,
-        ConfigVdfService configVdf,
-        SteamProcessService steamProcess,
-        ProtonPrefixService prefixService,
-        ProtontricksService protontricks,
-        LogService log
+        SteamIntegrationService steamIntegration,
+        ProtontricksService protontricks
     )
     {
         _settings = settings;
         _runner = runner;
         _steamLocator = steamLocator;
         _compatToolCatalog = compatToolCatalog;
-        _shortcutsVdf = shortcutsVdf;
-        _configVdf = configVdf;
-        _steamProcess = steamProcess;
-        _prefixService = prefixService;
+        _steamIntegration = steamIntegration;
         _protontricks = protontricks;
-        _log = log;
     }
 
     [RelayCommand]
@@ -162,68 +158,28 @@ public partial class SteamSetupViewModel : ViewModelBase
             PreflightText = "Tick the confirmation checkbox first — Steam will be closed and restarted.";
             return;
         }
-        var steam = _steam;
-        var tool = SelectedTool;
-        var mo2Exe = _mo2Exe;
-        var startDir = Path.GetDirectoryName(mo2Exe)!;
-
-        await _runner.RunAsync(
-            "Steam setup",
-            async (_, ct) =>
-            {
-                await RunStep(0, () => _steamProcess.ShutdownAsync(ct));
-
-                SteamShortcut shortcut = null!;
-                await RunStep(1, () =>
-                {
-                    var launchOptions = BuildLaunchOptions(startDir);
-                    shortcut = _shortcutsVdf.Upsert(steam, AppName, mo2Exe, startDir, launchOptions);
-                    _configVdf.SetCompatTool(steam, shortcut.UnsignedAppId, tool.InternalName);
-                    _log.Append(
-                        $"Shortcut '{AppName}' appid {shortcut.SignedAppId} (compat key {shortcut.UnsignedAppId}) → {tool.InternalName}"
-                    );
-                    return Task.CompletedTask;
-                });
-
-                await RunStep(2, () => _steamProcess.StartAndWaitAsync(ct));
-                await RunStep(3, () => _prefixService.CreateAsync(steam, tool, shortcut.UnsignedAppId, ct));
-                await RunStep(4, () => _protontricks.InstallComponentsAsync(shortcut.UnsignedAppId, ct));
-
-                Dispatcher.UIThread.Post(() =>
-                    PreflightText =
-                        $"Done. '{AppName}' is in your Steam library with {tool.DisplayName}. Launch it from Steam to start Mod Organizer 2."
-                );
-            }
-        );
-    }
-
-    private string BuildLaunchOptions(string startDir)
-    {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var p = _settings.ActiveProfile!;
-        var mounts = new[] { p.Anomaly, p.Gamma, p.Cache }
-            .Select(Path.GetFullPath)
-            .Where(path => !path.StartsWith(home, StringComparison.Ordinal))
-            .Distinct()
-            .ToList();
-        return mounts.Count > 0
-            ? $"STEAM_COMPAT_MOUNTS=\"{string.Join(':', mounts)}\" %command%"
-            : "%command%";
-    }
+        var ctx = new SteamSetupContext(
+            _steam,
+            SelectedTool,
+            AppName,
+            _mo2Exe,
+            SteamIntegrationService.BuildLaunchOptions([p.Anomaly, p.Gamma, p.Cache])
+        );
 
-    private async Task RunStep(int index, Func<Task> action)
-    {
-        var step = Steps[index];
-        Dispatcher.UIThread.Post(step.Running);
-        try
+        var result = await _runner.RunAsync(
+            "Steam setup",
+            (_, ct) =>
+                _steamIntegration.RunAsync(
+                    ctx,
+                    (i, state, detail) => Dispatcher.UIThread.Post(() => Steps[i].Apply(state, detail)),
+                    ct
+                )
+        );
+        if (result.Outcome == OperationOutcome.Succeeded)
         {
-            await action();
-            Dispatcher.UIThread.Post(() => step.Ok());
-        }
-        catch (Exception e)
-        {
-            Dispatcher.UIThread.Post(() => step.Fail(e.Message));
-            throw;
+            PreflightText =
+                $"Done. '{AppName}' is in your Steam library with {ctx.Tool.DisplayName}. Launch it from Steam to start Mod Organizer 2.";
         }
     }
 
@@ -233,10 +189,6 @@ public partial class SteamSetupViewModel : ViewModelBase
     private readonly OperationRunner _runner;
     private readonly SteamLocator _steamLocator;
     private readonly CompatToolCatalog _compatToolCatalog;
-    private readonly ShortcutsVdfService _shortcutsVdf;
-    private readonly ConfigVdfService _configVdf;
-    private readonly SteamProcessService _steamProcess;
-    private readonly ProtonPrefixService _prefixService;
+    private readonly SteamIntegrationService _steamIntegration;
     private readonly ProtontricksService _protontricks;
-    private readonly LogService _log;
 }
