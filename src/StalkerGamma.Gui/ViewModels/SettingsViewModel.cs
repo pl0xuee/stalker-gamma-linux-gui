@@ -43,10 +43,20 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void NewProfile()
     {
+        // Absolute defaults: relative paths would resolve against the AppImage's launch
+        // directory, scattering a 40GB install wherever the app happened to start.
+        var gamesDir = System.IO.Path.Join(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "Games",
+            "GAMMA"
+        );
         var profile = new CliProfile
         {
             ProfileName = UniqueName("Gamma"),
             Active = Profiles.Count == 0,
+            Anomaly = System.IO.Path.Join(gamesDir, "anomaly"),
+            Gamma = System.IO.Path.Join(gamesDir, "gamma"),
+            Cache = System.IO.Path.Join(gamesDir, "cache"),
         };
         _settings.Settings.Profiles.Add(profile);
         Profiles.Add(profile);
@@ -95,6 +105,15 @@ public partial class SettingsViewModel : ViewModelBase
     private async Task DeleteSelectedAsync()
     {
         if (SelectedProfile is null)
+        {
+            return;
+        }
+        if (
+            !await ConfirmDialog.ShowAsync(
+                "Delete profile",
+                $"Delete the config profile '{SelectedProfile.ProfileName}'? Installed files are not touched."
+            )
+        )
         {
             return;
         }

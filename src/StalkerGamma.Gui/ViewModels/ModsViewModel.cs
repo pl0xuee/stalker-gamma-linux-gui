@@ -41,7 +41,7 @@ public partial class ModsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void Refresh()
+    public async Task RefreshAsync()
     {
         Mods.Clear();
         _loading = true;
@@ -60,7 +60,7 @@ public partial class ModsViewModel : ViewModelBase
                 StatusText = $"modlist.txt not found ({modListPath}) — install GAMMA first.";
                 return;
             }
-            var mods = ModListUtility.GetModListAsync(modListPath).GetAwaiter().GetResult();
+            var mods = await ModListUtility.GetModListAsync(modListPath);
             foreach (var mod in mods)
             {
                 Mods.Add(
@@ -68,6 +68,10 @@ public partial class ModsViewModel : ViewModelBase
                 );
             }
             StatusText = $"{Mods.Count} entries ({Mods.Count(m => m.Enabled)} enabled)";
+        }
+        catch (Exception e)
+        {
+            StatusText = e.Message;
         }
         finally
         {
@@ -86,13 +90,28 @@ public partial class ModsViewModel : ViewModelBase
         {
             return;
         }
-        var mods = Mods.Select(m => new ModListRecord
+        // Serialize writes: rapid checkbox toggling must not overlap writes to modlist.txt,
+        // and IO failures must surface instead of vanishing as unobserved task exceptions.
+        await _saveLock.WaitAsync();
+        try
         {
-            Name = m.Name,
-            Status = m.Enabled ? ModStatus.Enabled : ModStatus.Disabled,
-        }).ToList();
-        await ModListUtility.SaveModListAsync(ModListPath(p.Gamma, p.Mo2Profile), mods);
-        StatusText = $"{Mods.Count} entries ({Mods.Count(m => m.Enabled)} enabled) — saved";
+            var mods = Mods.Select(m => new ModListRecord
+            {
+                Name = m.Name,
+                Status = m.Enabled ? ModStatus.Enabled : ModStatus.Disabled,
+            }).ToList();
+            await ModListUtility.SaveModListAsync(ModListPath(p.Gamma, p.Mo2Profile), mods);
+            StatusText = $"{Mods.Count} entries ({Mods.Count(m => m.Enabled)} enabled) — saved";
+        }
+        catch (Exception e)
+        {
+            StatusText = $"Save failed: {e.Message}";
+            _log.Append($"modlist.txt save failed: {e.Message}");
+        }
+        finally
+        {
+            _saveLock.Release();
+        }
     }
 
     [RelayCommand]
@@ -101,6 +120,15 @@ public partial class ModsViewModel : ViewModelBase
         var p = _settings.ActiveProfile;
         var mod = SelectedMod;
         if (p is null || mod is null)
+        {
+            return;
+        }
+        if (
+            !await ConfirmDialog.ShowAsync(
+                "Delete mod",
+                $"Delete '{mod.Name}' and its files from the mods directory? This cannot be undone."
+            )
+        )
         {
             return;
         }
@@ -121,5 +149,6 @@ public partial class ModsViewModel : ViewModelBase
 
     private readonly SettingsService _settings;
     private readonly LogService _log;
+    private readonly System.Threading.SemaphoreSlim _saveLock = new(1, 1);
     private bool _loading;
 }

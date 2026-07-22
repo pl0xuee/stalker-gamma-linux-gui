@@ -25,22 +25,21 @@ public class ProtontricksService(LogService log)
         "vcrun2022",
     ];
 
-    public bool IsAvailable(out string version)
+    public async Task<(bool Ok, string Version)> IsAvailableAsync(CancellationToken ct = default)
     {
-        version = "";
         try
         {
-            var (code, stdout, _) = Run("protontricks", ["-V"], TimeSpan.FromSeconds(20));
-            if (code != 0)
-            {
-                return false;
-            }
-            version = stdout.Trim();
-            return true;
+            var (code, stdout, _) = await RunAsync(
+                "protontricks",
+                ["-V"],
+                TimeSpan.FromSeconds(20),
+                ct
+            );
+            return code == 0 ? (true, stdout.Trim()) : (false, "");
         }
         catch
         {
-            return false;
+            return (false, "");
         }
     }
 
@@ -105,30 +104,14 @@ public class ProtontricksService(LogService log)
     {
         try
         {
-            Run("wineserver", ["-k"], TimeSpan.FromSeconds(15));
+            var psi = BuildPsi("wineserver", ["-k"]);
+            using var p = Process.Start(psi);
+            p?.WaitForExit(15000);
         }
         catch
         {
             // wineserver may not be on PATH; best-effort cleanup only
         }
-    }
-
-    private static (int Code, string StdOut, string StdErr) Run(
-        string file,
-        string[] args,
-        TimeSpan timeout
-    )
-    {
-        var psi = BuildPsi(file, args);
-        using var p = Process.Start(psi)!;
-        var stdout = p.StandardOutput.ReadToEnd();
-        var stderr = p.StandardError.ReadToEnd();
-        if (!p.WaitForExit(timeout))
-        {
-            p.Kill(true);
-            throw new TimeoutException($"{file} timed out after {timeout}");
-        }
-        return (p.ExitCode, stdout, stderr);
     }
 
     private static async Task<(int Code, string StdOut, string StdErr)> RunAsync(

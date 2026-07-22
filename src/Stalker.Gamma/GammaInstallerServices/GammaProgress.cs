@@ -34,7 +34,9 @@ public class GammaProgress : IGammaProgress
 
     internal void IncrementCompletedMods() => Interlocked.Increment(ref _completedMods);
 
-    internal void Reset()
+    // Public so long-lived hosts (the GUI) can re-baseline between operations; the CLI
+    // is one process per command and never needed this.
+    public void Reset()
     {
         _completedMods = 0;
         TotalMods = 0;

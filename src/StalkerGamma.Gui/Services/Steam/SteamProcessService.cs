@@ -89,8 +89,10 @@ public class SteamProcessService(LogService log)
                 UseShellExecute = false,
             }
         )!;
-        var stdout = p.StandardOutput.ReadToEnd();
+        // Drain both pipes concurrently or a chatty child can fill one and deadlock us.
+        var stdout = p.StandardOutput.ReadToEndAsync();
+        var stderr = p.StandardError.ReadToEndAsync();
         p.WaitForExit();
-        return (p.ExitCode, stdout);
+        return (p.ExitCode, stdout.GetAwaiter().GetResult());
     }
 }

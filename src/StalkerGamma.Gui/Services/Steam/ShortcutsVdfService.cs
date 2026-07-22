@@ -8,7 +8,7 @@ namespace StalkerGamma.Gui.Services.Steam;
 
 public sealed record SteamShortcut(int SignedAppId, string AppName, string Exe, string StartDir)
 {
-    public long UnsignedAppId => SignedAppId + 4294967296L;
+    public long UnsignedAppId => SignedAppId < 0 ? SignedAppId + 4294967296L : SignedAppId;
 }
 
 /// <summary>
@@ -79,8 +79,10 @@ public class ShortcutsVdfService
                 && string.Equals(Str(d, "AppName"), appName, StringComparison.OrdinalIgnoreCase)
             )
             .Key;
+        // Reuse ANY existing non-zero appid (some tools write positive ids) so re-runs and
+        // takeovers keep pointing at the same compatdata prefix and CompatToolMapping entry.
         if (existingKey is not null && existing[existingKey] is Dictionary<string, object> old
-            && old.TryGetValue("appid", out var oldId) && oldId is int oldSigned && oldSigned < 0)
+            && old.TryGetValue("appid", out var oldId) && oldId is int oldSigned && oldSigned != 0)
         {
             signedAppId = oldSigned;
         }

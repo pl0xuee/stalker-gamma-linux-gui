@@ -40,10 +40,20 @@ public class CliSettings
         {
             return new CliSettings();
         }
-        return JsonSerializer.Deserialize(
-                File.ReadAllText(SettingsPath),
-                CliSettingsCtx.Default.CliSettings
-            ) ?? new CliSettings();
+        try
+        {
+            return JsonSerializer.Deserialize(
+                    File.ReadAllText(SettingsPath),
+                    CliSettingsCtx.Default.CliSettings
+                ) ?? new CliSettings();
+        }
+        catch (JsonException)
+        {
+            // A corrupt settings.json must not brick the app; keep the broken file for
+            // inspection and start fresh in memory (only persisted if the user saves).
+            File.Copy(SettingsPath, SettingsPath + ".corrupt", true);
+            return new CliSettings();
+        }
     }
 
     public static readonly string AppDataPath = Path.Join(

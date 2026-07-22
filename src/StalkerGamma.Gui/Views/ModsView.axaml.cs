@@ -8,6 +8,6 @@ public partial class ModsView : UserControl
     public ModsView()
     {
         InitializeComponent();
-        AttachedToVisualTree += (_, _) => (DataContext as ModsViewModel)?.Refresh();
+        AttachedToVisualTree += (_, _) => _ = (DataContext as ModsViewModel)?.RefreshAsync();
     }
 }

@@ -46,6 +46,12 @@
                     <CheckBox Content="Preserve user.ltx" IsChecked="{Binding PreserveUserSettings}" Margin="0,0,18,0"/>
                     <CheckBox Content="Preserve MCM settings" IsChecked="{Binding PreserveMcmSettings}"/>
                 </WrapPanel>
+                <StackPanel Spacing="6" IsVisible="{Binding Offline}">
+                    <TextBlock Classes="muted" FontSize="11"
+                               Text="Offline install needs local copies of both list files:"/>
+                    <TextBox Text="{Binding ModPackMakerPath}" PlaceholderText="Path to modpack_maker_list.txt"/>
+                    <TextBox Text="{Binding ModListPath}" PlaceholderText="Path to modlist.txt"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 

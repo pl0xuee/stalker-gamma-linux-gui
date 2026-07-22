@@ -81,7 +81,7 @@ public partial class Mo2ProfilesViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void DeleteSelected()
+    private async Task DeleteSelectedAsync()
     {
         var p = _settings.ActiveProfile;
         if (p is null || SelectedProfile is null)
@@ -90,6 +90,15 @@ public partial class Mo2ProfilesViewModel : ViewModelBase
         }
         var profilePath = Path.Join(p.Gamma, "profiles", SelectedProfile);
         if (!Directory.Exists(profilePath))
+        {
+            return;
+        }
+        if (
+            !await ConfirmDialog.ShowAsync(
+                "Delete MO2 profile",
+                $"Delete the MO2 profile '{SelectedProfile}' and its settings? This cannot be undone."
+            )
+        )
         {
             return;
         }

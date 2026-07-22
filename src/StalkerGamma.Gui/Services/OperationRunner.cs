@@ -19,7 +19,13 @@ public sealed record OperationResult(OperationOutcome Outcome, Exception? Error 
 /// are not safe for concurrent operations). Each run gets a fresh DI scope, which also disposes
 /// the scoped GammaInstaller (HttpClient, python server) afterwards.
 /// </summary>
-public class OperationRunner(IServiceProvider serviceProvider, SettingsService settingsService, LogService log)
+public class OperationRunner(
+    IServiceProvider serviceProvider,
+    SettingsService settingsService,
+    LogService log,
+    UtilitiesReadyService utilitiesReady,
+    Stalker.Gamma.GammaInstallerServices.GammaProgress gammaProgress
+)
 {
     public bool IsBusy => _busy == 1;
     public string? CurrentOperation { get; private set; }
@@ -48,6 +54,13 @@ public class OperationRunner(IServiceProvider serviceProvider, SettingsService s
         OperationResult result;
         try
         {
+            // Fail fast, not 30GB in: the CLI checks dependencies before every command.
+            var (ready, reason) = utilitiesReady.Check();
+            if (!ready)
+            {
+                throw new InvalidOperationException($"Missing dependencies:\n{reason}");
+            }
+            gammaProgress.Reset();
             settingsService.ApplyActiveProfileToEngine(downloadThreadsOverride);
             using var scope = serviceProvider.CreateScope();
             await Task.Run(() => work(scope.ServiceProvider, _cts.Token), _cts.Token);

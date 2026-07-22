@@ -78,7 +78,7 @@ public partial class SteamSetupViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void Preflight()
+    public async Task PreflightAsync()
     {
         var problems = new List<string>();
         var infos = new List<string>();
@@ -93,7 +93,8 @@ public partial class SteamSetupViewModel : ViewModelBase
             infos.Add($"Steam: {_steam.Root} (user {_steam.UserId})");
         }
 
-        if (_protontricks.IsAvailable(out var version))
+        var (ptOk, version) = await _protontricks.IsAvailableAsync();
+        if (ptOk)
         {
             infos.Add($"protontricks: {version}");
         }
@@ -102,12 +103,16 @@ public partial class SteamSetupViewModel : ViewModelBase
             problems.Add("protontricks not found — install it (e.g. `sudo pacman -S protontricks`).");
         }
 
+        var previousTool = SelectedTool;
         CompatTools.Clear();
         foreach (var tool in _compatToolCatalog.Scan(_steam?.Root))
         {
             CompatTools.Add(tool);
         }
-        SelectedTool = CompatTools.FirstOrDefault();
+        // A rescan must not silently override the user's explicit Proton choice.
+        SelectedTool =
+            CompatTools.FirstOrDefault(t => t.InternalName == previousTool?.InternalName)
+            ?? CompatTools.FirstOrDefault();
         if (SelectedTool is null)
         {
             problems.Add(
@@ -148,7 +153,7 @@ public partial class SteamSetupViewModel : ViewModelBase
     [RelayCommand]
     private async Task RunSetupAsync()
     {
-        Preflight();
+        await PreflightAsync();
         if (!PreflightOk || _steam is null || SelectedTool is null || _mo2Exe is null)
         {
             return;

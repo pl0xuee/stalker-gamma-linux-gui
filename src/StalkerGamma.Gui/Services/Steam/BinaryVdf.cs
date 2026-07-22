@@ -15,6 +15,9 @@ public static class BinaryVdf
     private const byte TypeMap = 0x00;
     private const byte TypeString = 0x01;
     private const byte TypeInt = 0x02;
+    private const byte TypeFloat = 0x03;
+    private const byte TypeUInt64 = 0x07;
+    private const byte TypeInt64 = 0x0A;
     private const byte EndMap = 0x08;
 
     public static Dictionary<string, object> Read(byte[] data)
@@ -52,6 +55,20 @@ public static class BinaryVdf
                 case TypeInt:
                     map[name] = BitConverter.ToInt32(data, pos);
                     pos += 4;
+                    break;
+                // Passthrough types written by other tools (Steam ROM Manager, Heroic, …);
+                // aborting on them would break users with existing third-party shortcuts.
+                case TypeFloat:
+                    map[name] = BitConverter.ToSingle(data, pos);
+                    pos += 4;
+                    break;
+                case TypeUInt64:
+                    map[name] = BitConverter.ToUInt64(data, pos);
+                    pos += 8;
+                    break;
+                case TypeInt64:
+                    map[name] = BitConverter.ToInt64(data, pos);
+                    pos += 8;
                     break;
                 default:
                     throw new InvalidDataException($"Unsupported binary VDF node type 0x{type:x2} at {pos - 1}");
@@ -92,6 +109,21 @@ public static class BinaryVdf
                     s.WriteByte(TypeInt);
                     WriteCString(s, key);
                     s.Write(BitConverter.GetBytes(i));
+                    break;
+                case float f:
+                    s.WriteByte(TypeFloat);
+                    WriteCString(s, key);
+                    s.Write(BitConverter.GetBytes(f));
+                    break;
+                case ulong u:
+                    s.WriteByte(TypeUInt64);
+                    WriteCString(s, key);
+                    s.Write(BitConverter.GetBytes(u));
+                    break;
+                case long l:
+                    s.WriteByte(TypeInt64);
+                    WriteCString(s, key);
+                    s.Write(BitConverter.GetBytes(l));
                     break;
                 default:
                     throw new InvalidDataException($"Unsupported value type {value?.GetType().Name} for key '{key}'");

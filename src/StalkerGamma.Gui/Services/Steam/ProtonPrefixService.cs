@@ -49,13 +49,14 @@ public class ProtonPrefixService(LogService log)
         using var p = Process.Start(psi)!;
         _ = p.StandardOutput.ReadToEndAsync(ct);
         _ = p.StandardError.ReadToEndAsync(ct);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(180));
         try
         {
-            await p.WaitForExitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(120)).Token);
+            await p.WaitForExitAsync(timeoutCts.Token);
         }
         catch (OperationCanceledException)
         {
-            log.Append("wineboot timed out; polling for prefix…");
             try
             {
                 p.Kill(true);
@@ -64,6 +65,11 @@ public class ProtonPrefixService(LogService log)
             {
                 // already gone
             }
+            if (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            log.Append("wineboot timed out; polling for prefix…");
         }
 
         // Success criterion is the prefix existing, not wineboot's exit code.

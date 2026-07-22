@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -115,10 +116,37 @@ public partial class InstallViewModel : ViewModelBase
             _log.Append("No active profile — create one in Settings first.");
             return;
         }
+        if (!ValidateInstallInputs(p))
+        {
+            return;
+        }
         Dispatcher.UIThread.Post(ModRows.Clear);
         _rowLookup.Clear();
 
         await _runner.RunAsync("Full install", (sp, ct) => FullInstallCoreAsync(sp, p, ct));
+    }
+
+    /// <summary>Fail before the download starts, not 30GB in.</summary>
+    private bool ValidateInstallInputs(Models.CliProfile p)
+    {
+        // Relative paths resolve against the AppImage's arbitrary launch CWD — a CLI-written
+        // settings.json still carries relative defaults like "gamma/anomaly".
+        foreach (var (label, path) in new[] { ("Anomaly", p.Anomaly), ("GAMMA", p.Gamma), ("Cache", p.Cache) })
+        {
+            if (!Path.IsPathRooted(path))
+            {
+                CheckResultText = $"{label} path '{path}' is relative — make it absolute in Settings.";
+                _log.Append(CheckResultText);
+                return false;
+            }
+        }
+        if (Offline && (string.IsNullOrWhiteSpace(ModPackMakerPath) || string.IsNullOrWhiteSpace(ModListPath)))
+        {
+            CheckResultText = "Offline install needs both modpack_maker_list and modlist.txt paths.";
+            _log.Append(CheckResultText);
+            return false;
+        }
+        return true;
     }
 
     /// <summary>One click: default profile if needed → full install → Steam setup.</summary>
@@ -136,16 +164,23 @@ public partial class InstallViewModel : ViewModelBase
             );
         }
 
+        if (!ValidateInstallInputs(p))
+        {
+            return;
+        }
+
         Services.Steam.SteamSetupContext? steamCtx = null;
         if (SetupSteamAfter)
         {
-            steamCtx = BuildSteamContext(p, out var problem);
-            if (steamCtx is null)
+            var (ctx, problem) = await BuildSteamContextAsync(p);
+            if (ctx is null)
             {
+                CheckResultText = $"Steam setup blocked: {problem}";
                 _log.Append($"Cannot set up Steam: {problem}");
                 _log.Append("Fix the issue or untick 'Set up Steam afterwards', then retry.");
                 return;
             }
+            steamCtx = ctx;
         }
 
         Dispatcher.UIThread.Post(ModRows.Clear);
@@ -158,6 +193,12 @@ public partial class InstallViewModel : ViewModelBase
                 await FullInstallCoreAsync(sp, p, ct);
                 if (steamCtx is not null)
                 {
+                    if (!File.Exists(steamCtx.Mo2Exe))
+                    {
+                        throw new FileNotFoundException(
+                            $"Install finished but {steamCtx.Mo2Exe} does not exist — skipping Steam setup."
+                        );
+                    }
                     _log.Append("Install finished — starting Steam setup");
                     await _steamIntegration.RunAsync(steamCtx, ReportSteamStep, ct);
                     _log.Append(
@@ -205,9 +246,15 @@ public partial class InstallViewModel : ViewModelBase
             "Games",
             "GAMMA"
         );
+        var name = "Gamma";
+        var i = 1;
+        while (_settings.Settings.Profiles.Any(x => x.ProfileName == name))
+        {
+            name = $"Gamma{i++}";
+        }
         var profile = new Models.CliProfile
         {
-            ProfileName = "Gamma",
+            ProfileName = name,
             Active = true,
             Anomaly = Path.Join(gamesDir, "anomaly"),
             Gamma = Path.Join(gamesDir, "gamma"),
@@ -221,36 +268,35 @@ public partial class InstallViewModel : ViewModelBase
         return profile;
     }
 
-    private Services.Steam.SteamSetupContext? BuildSteamContext(
-        Models.CliProfile p,
-        out string problem
+    private async Task<(Services.Steam.SteamSetupContext? Ctx, string Problem)> BuildSteamContextAsync(
+        Models.CliProfile p
     )
     {
-        problem = "";
         var steam = _steamLocator.Locate();
         if (steam is null)
         {
-            problem = "native Steam installation not found.";
-            return null;
+            return (null, "native Steam installation not found.");
         }
-        if (!_protontricks.IsAvailable(out _))
+        var (ptOk, _) = await _protontricks.IsAvailableAsync();
+        if (!ptOk)
         {
-            problem = "protontricks not found (sudo pacman -S protontricks).";
-            return null;
+            return (null, "protontricks not found (sudo pacman -S protontricks).");
         }
         var tool = _compatToolCatalog.PickBest(_compatToolCatalog.Scan(steam.Root));
         if (tool is null)
         {
-            problem = "no Proton found in compatibilitytools.d (install proton-cachyos or GE-Proton).";
-            return null;
+            return (null, "no Proton found in compatibilitytools.d (install proton-cachyos or GE-Proton).");
         }
-        // ModOrganizer.exe existence is checked after the install phase creates it.
-        return new Services.Steam.SteamSetupContext(
-            steam,
-            tool,
-            "STALKER GAMMA",
-            Path.GetFullPath(Path.Join(p.Gamma, "ModOrganizer.exe")),
-            Services.Steam.SteamIntegrationService.BuildLaunchOptions([p.Anomaly, p.Gamma, p.Cache])
+        // ModOrganizer.exe existence is verified between the install and Steam phases.
+        return (
+            new Services.Steam.SteamSetupContext(
+                steam,
+                tool,
+                "STALKER GAMMA",
+                Path.GetFullPath(Path.Join(p.Gamma, "ModOrganizer.exe")),
+                Services.Steam.SteamIntegrationService.BuildLaunchOptions([p.Anomaly, p.Gamma, p.Cache])
+            ),
+            ""
         );
     }
 
@@ -274,6 +320,10 @@ public partial class InstallViewModel : ViewModelBase
         if (p is null)
         {
             _log.Append("No active profile — create one in Settings first.");
+            return;
+        }
+        if (!ValidateInstallInputs(p))
+        {
             return;
         }
         await _runner.RunAsync(

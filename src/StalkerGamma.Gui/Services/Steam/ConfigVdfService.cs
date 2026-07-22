@@ -37,7 +37,8 @@ public class ConfigVdfService
             ""
         );
 
-        var mappingIdx = text.IndexOf("\"CompatToolMapping\"", StringComparison.Ordinal);
+        // VDF keys are case-insensitive; real config.vdf files vary in casing.
+        var mappingIdx = text.IndexOf("\"CompatToolMapping\"", StringComparison.OrdinalIgnoreCase);
         if (mappingIdx >= 0)
         {
             var braceIdx = text.IndexOf('{', mappingIdx);
@@ -50,7 +51,7 @@ public class ConfigVdfService
         else
         {
             // No CompatToolMapping yet — create it inside the "Steam" block.
-            var steamIdx = text.IndexOf("\"Steam\"", StringComparison.Ordinal);
+            var steamIdx = text.IndexOf("\"Steam\"", StringComparison.OrdinalIgnoreCase);
             if (steamIdx < 0)
             {
                 throw new InvalidDataException("No \"Steam\" block found in config.vdf");
