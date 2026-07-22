@@ -1,9 +1,242 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using StalkerGamma.Gui.Services;
+using StalkerGamma.Gui.Services.Steam;
 
 namespace StalkerGamma.Gui.ViewModels;
 
+public partial class SetupStep(string name) : ObservableObject
+{
+    public string Name { get; } = name;
+
+    [ObservableProperty]
+    public partial string Status { get; set; } = "•";
+
+    [ObservableProperty]
+    public partial string Detail { get; set; } = "";
+
+    public void Reset() => (Status, Detail) = ("•", "");
+    public void Running() => Status = "⏳";
+    public void Ok(string detail = "") => (Status, Detail) = ("✅", detail);
+    public void Fail(string detail) => (Status, Detail) = ("❌", detail);
+}
+
 public partial class SteamSetupViewModel : ViewModelBase
 {
+    public ObservableCollection<SetupStep> Steps { get; } =
+    [
+        new SetupStep("Shut down Steam"),
+        new SetupStep("Write Steam shortcut + compatibility tool"),
+        new SetupStep("Restart Steam"),
+        new SetupStep("Create Proton prefix"),
+        new SetupStep("Install prerequisites (protontricks)"),
+    ];
+
+    public ObservableCollection<CompatTool> CompatTools { get; } = [];
+
     [ObservableProperty]
-    public partial string StatusText { get; set; } = "Steam integration coming in the next step.";
+    public partial CompatTool? SelectedTool { get; set; }
+
+    [ObservableProperty]
+    public partial string PreflightText { get; set; } = "";
+
+    [ObservableProperty]
+    public partial bool PreflightOk { get; set; }
+
+    [ObservableProperty]
+    public partial bool ConfirmRestart { get; set; }
+
+    [ObservableProperty]
+    public partial string AppName { get; set; } = "STALKER GAMMA";
+
+    public SteamSetupViewModel(
+        SettingsService settings,
+        OperationRunner runner,
+        SteamLocator steamLocator,
+        CompatToolCatalog compatToolCatalog,
+        ShortcutsVdfService shortcutsVdf,
+        ConfigVdfService configVdf,
+        SteamProcessService steamProcess,
+        ProtonPrefixService prefixService,
+        ProtontricksService protontricks,
+        LogService log
+    )
+    {
+        _settings = settings;
+        _runner = runner;
+        _steamLocator = steamLocator;
+        _compatToolCatalog = compatToolCatalog;
+        _shortcutsVdf = shortcutsVdf;
+        _configVdf = configVdf;
+        _steamProcess = steamProcess;
+        _prefixService = prefixService;
+        _protontricks = protontricks;
+        _log = log;
+    }
+
+    [RelayCommand]
+    public void Preflight()
+    {
+        var problems = new List<string>();
+        var infos = new List<string>();
+
+        _steam = _steamLocator.Locate();
+        if (_steam is null)
+        {
+            problems.Add("Native Steam installation not found (Flatpak Steam is not supported).");
+        }
+        else
+        {
+            infos.Add($"Steam: {_steam.Root} (user {_steam.UserId})");
+        }
+
+        if (_protontricks.IsAvailable(out var version))
+        {
+            infos.Add($"protontricks: {version}");
+        }
+        else
+        {
+            problems.Add("protontricks not found — install it (e.g. `sudo pacman -S protontricks`).");
+        }
+
+        CompatTools.Clear();
+        foreach (var tool in _compatToolCatalog.Scan(_steam?.Root))
+        {
+            CompatTools.Add(tool);
+        }
+        SelectedTool = CompatTools.FirstOrDefault();
+        if (SelectedTool is null)
+        {
+            problems.Add(
+                "No Proton found in compatibilitytools.d (install proton-cachyos or GE-Proton)."
+            );
+        }
+        else
+        {
+            infos.Add($"Proton: {SelectedTool.DisplayName}");
+        }
+
+        var p = _settings.ActiveProfile;
+        if (p is null)
+        {
+            problems.Add("No active profile — create one in Settings first.");
+        }
+        else
+        {
+            _mo2Exe = Path.GetFullPath(Path.Join(p.Gamma, "ModOrganizer.exe"));
+            if (File.Exists(_mo2Exe))
+            {
+                infos.Add($"MO2: {_mo2Exe}");
+            }
+            else
+            {
+                problems.Add($"ModOrganizer.exe not found at {_mo2Exe} — install GAMMA first.");
+            }
+        }
+
+        PreflightOk = problems.Count == 0;
+        PreflightText = string.Join("\n", problems.Concat(infos));
+        foreach (var step in Steps)
+        {
+            step.Reset();
+        }
+    }
+
+    [RelayCommand]
+    private async Task RunSetupAsync()
+    {
+        Preflight();
+        if (!PreflightOk || _steam is null || SelectedTool is null || _mo2Exe is null)
+        {
+            return;
+        }
+        if (!ConfirmRestart)
+        {
+            PreflightText = "Tick the confirmation checkbox first — Steam will be closed and restarted.";
+            return;
+        }
+        var steam = _steam;
+        var tool = SelectedTool;
+        var mo2Exe = _mo2Exe;
+        var startDir = Path.GetDirectoryName(mo2Exe)!;
+
+        await _runner.RunAsync(
+            "Steam setup",
+            async (_, ct) =>
+            {
+                await RunStep(0, () => _steamProcess.ShutdownAsync(ct));
+
+                SteamShortcut shortcut = null!;
+                await RunStep(1, () =>
+                {
+                    var launchOptions = BuildLaunchOptions(startDir);
+                    shortcut = _shortcutsVdf.Upsert(steam, AppName, mo2Exe, startDir, launchOptions);
+                    _configVdf.SetCompatTool(steam, shortcut.UnsignedAppId, tool.InternalName);
+                    _log.Append(
+                        $"Shortcut '{AppName}' appid {shortcut.SignedAppId} (compat key {shortcut.UnsignedAppId}) → {tool.InternalName}"
+                    );
+                    return Task.CompletedTask;
+                });
+
+                await RunStep(2, () => _steamProcess.StartAndWaitAsync(ct));
+                await RunStep(3, () => _prefixService.CreateAsync(steam, tool, shortcut.UnsignedAppId, ct));
+                await RunStep(4, () => _protontricks.InstallComponentsAsync(shortcut.UnsignedAppId, ct));
+
+                Dispatcher.UIThread.Post(() =>
+                    PreflightText =
+                        $"Done. '{AppName}' is in your Steam library with {tool.DisplayName}. Launch it from Steam to start Mod Organizer 2."
+                );
+            }
+        );
+    }
+
+    private string BuildLaunchOptions(string startDir)
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var p = _settings.ActiveProfile!;
+        var mounts = new[] { p.Anomaly, p.Gamma, p.Cache }
+            .Select(Path.GetFullPath)
+            .Where(path => !path.StartsWith(home, StringComparison.Ordinal))
+            .Distinct()
+            .ToList();
+        return mounts.Count > 0
+            ? $"STEAM_COMPAT_MOUNTS=\"{string.Join(':', mounts)}\" %command%"
+            : "%command%";
+    }
+
+    private async Task RunStep(int index, Func<Task> action)
+    {
+        var step = Steps[index];
+        Dispatcher.UIThread.Post(step.Running);
+        try
+        {
+            await action();
+            Dispatcher.UIThread.Post(() => step.Ok());
+        }
+        catch (Exception e)
+        {
+            Dispatcher.UIThread.Post(() => step.Fail(e.Message));
+            throw;
+        }
+    }
+
+    private SteamInstallation? _steam;
+    private string? _mo2Exe;
+    private readonly SettingsService _settings;
+    private readonly OperationRunner _runner;
+    private readonly SteamLocator _steamLocator;
+    private readonly CompatToolCatalog _compatToolCatalog;
+    private readonly ShortcutsVdfService _shortcutsVdf;
+    private readonly ConfigVdfService _configVdf;
+    private readonly SteamProcessService _steamProcess;
+    private readonly ProtonPrefixService _prefixService;
+    private readonly ProtontricksService _protontricks;
+    private readonly LogService _log;
 }
