@@ -22,11 +22,58 @@ public partial class SettingsViewModel : ViewModelBase
 
     public bool HasSelection => SelectedProfile is not null;
 
-    public SettingsViewModel(SettingsService settings, LogService log)
+    [ObservableProperty]
+    public partial string AppVersionText { get; set; } =
+        $"Version {AppUpdateService.CurrentVersion}";
+
+    [ObservableProperty]
+    public partial string UpdateStatusText { get; set; } = "";
+
+    [ObservableProperty]
+    public partial string? UpdateUrl { get; set; }
+
+    public SettingsViewModel(SettingsService settings, LogService log, AppUpdateService appUpdate)
     {
         _settings = settings;
         _log = log;
+        _appUpdate = appUpdate;
         Reload();
+    }
+
+    [RelayCommand]
+    private async Task CheckAppUpdateAsync()
+    {
+        UpdateStatusText = "Checking…";
+        UpdateUrl = null;
+        try
+        {
+            var result = await _appUpdate.CheckAsync();
+            if (result.UpdateAvailable)
+            {
+                UpdateStatusText = $"New release available: {result.LatestTag}";
+                UpdateUrl = result.ReleaseUrl;
+            }
+            else
+            {
+                UpdateStatusText = $"Up to date ({result.CurrentVersion})";
+            }
+        }
+        catch (Exception e)
+        {
+            UpdateStatusText = $"Check failed: {e.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void OpenReleasePage()
+    {
+        if (UpdateUrl is null)
+        {
+            return;
+        }
+        System.Diagnostics.Process.Start(
+            new System.Diagnostics.ProcessStartInfo { FileName = UpdateUrl, UseShellExecute = true }
+        );
     }
 
     public void Reload()
@@ -140,4 +187,5 @@ public partial class SettingsViewModel : ViewModelBase
 
     private readonly SettingsService _settings;
     private readonly LogService _log;
+    private readonly AppUpdateService _appUpdate;
 }

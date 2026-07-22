@@ -8,9 +8,11 @@ APPDIR="$ROOT/packaging/StalkerGammaGui.AppDir"
 PUBLISH="$ROOT/publish"
 OUT="$ROOT/StalkerGammaGui-x86_64.AppImage"
 
+VERSION="${VERSION:-0.1.0}"
+
 rm -rf "$PUBLISH" "$APPDIR/usr"
 dotnet publish "$ROOT/src/StalkerGamma.Gui/StalkerGamma.Gui.csproj" \
-    -c Release -r linux-x64 --self-contained -o "$PUBLISH"
+    -c Release -r linux-x64 --self-contained -o "$PUBLISH" -p:Version="$VERSION"
 rm -f "$PUBLISH"/*.pdb
 
 "$ROOT/scripts/setup-deps.sh" "$PUBLISH"
@@ -25,6 +27,7 @@ if [[ ! -x "$APPIMAGETOOL" ]]; then
     chmod +x "$APPIMAGETOOL"
 fi
 
-"$APPIMAGETOOL" "$APPDIR" "$OUT"
+# APPIMAGE_EXTRACT_AND_RUN lets appimagetool run without FUSE (CI runners, containers).
+APPIMAGE_EXTRACT_AND_RUN=1 "$APPIMAGETOOL" "$APPDIR" "$OUT"
 chmod +x "$OUT"
 echo "Built: $OUT"
