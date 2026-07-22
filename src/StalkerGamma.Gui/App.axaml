@@ -2,15 +2,157 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="StalkerGamma.Gui.App"
              xmlns:local="using:StalkerGamma.Gui"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
 
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
 
+    <Application.Resources>
+        <!-- Zone PDA palette -->
+        <Color x:Key="ZoneBgColor">#101412</Color>
+        <Color x:Key="ZonePanelColor">#161C18</Color>
+        <Color x:Key="ZoneCardColor">#1C2420</Color>
+        <Color x:Key="ZoneHairlineColor">#2C362E</Color>
+        <Color x:Key="ZoneTextColor">#D6DCCE</Color>
+        <Color x:Key="ZoneMutedColor">#8A9484</Color>
+        <Color x:Key="ZoneAmberColor">#E8A33D</Color>
+        <Color x:Key="ZoneAmberBrightColor">#F4B95A</Color>
+        <Color x:Key="ZoneTerminalColor">#9FB694</Color>
+
+        <SolidColorBrush x:Key="ZoneBg" Color="{StaticResource ZoneBgColor}"/>
+        <SolidColorBrush x:Key="ZonePanel" Color="{StaticResource ZonePanelColor}"/>
+        <SolidColorBrush x:Key="ZoneCard" Color="{StaticResource ZoneCardColor}"/>
+        <SolidColorBrush x:Key="ZoneHairline" Color="{StaticResource ZoneHairlineColor}"/>
+        <SolidColorBrush x:Key="ZoneText" Color="{StaticResource ZoneTextColor}"/>
+        <SolidColorBrush x:Key="ZoneMuted" Color="{StaticResource ZoneMutedColor}"/>
+        <SolidColorBrush x:Key="ZoneAmber" Color="{StaticResource ZoneAmberColor}"/>
+        <SolidColorBrush x:Key="ZoneAmberBright" Color="{StaticResource ZoneAmberBrightColor}"/>
+        <SolidColorBrush x:Key="ZoneTerminal" Color="{StaticResource ZoneTerminalColor}"/>
+
+        <!-- Fluent accent → anomaly amber (checkboxes, progress bars, selections) -->
+        <Color x:Key="SystemAccentColor">#E8A33D</Color>
+        <Color x:Key="SystemAccentColorDark1">#D08F2D</Color>
+        <Color x:Key="SystemAccentColorDark2">#B87C21</Color>
+        <Color x:Key="SystemAccentColorDark3">#9E6917</Color>
+        <Color x:Key="SystemAccentColorLight1">#F4B95A</Color>
+        <Color x:Key="SystemAccentColorLight2">#F8C878</Color>
+        <Color x:Key="SystemAccentColorLight3">#FBD696</Color>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{StaticResource ZoneBg}"/>
+            <Setter Property="Foreground" Value="{StaticResource ZoneText}"/>
+        </Style>
+
+        <!-- Page header pattern: tracked uppercase eyebrow over the title -->
+        <Style Selector="TextBlock.eyebrow">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="LetterSpacing" Value="3"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource ZoneAmber}"/>
+        </Style>
+        <Style Selector="TextBlock.h1">
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource ZoneText}"/>
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{StaticResource ZoneMuted}"/>
+        </Style>
+        <Style Selector="TextBlock.mono">
+            <Setter Property="FontFamily" Value="monospace"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource ZoneCard}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ZoneHairline}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
+        <Style Selector="Border.card-hero">
+            <Setter Property="BorderThickness" Value="1,1,1,1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ZoneHairline}"/>
+            <Setter Property="Background" Value="{StaticResource ZoneCard}"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="18,16"/>
+        </Style>
+
+        <!-- Amber action button; dark text for contrast on amber -->
+        <Style Selector="Button.accent">
+            <Setter Property="Background" Value="{StaticResource ZoneAmber}"/>
+            <Setter Property="Foreground" Value="#171310"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ZoneAmberBright}"/>
+            <Setter Property="Foreground" Value="#171310"/>
+        </Style>
+        <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ZoneAmberColor}"/>
+            <Setter Property="Foreground" Value="#171310"/>
+        </Style>
+
+        <!-- PDA rail navigation -->
+        <Style Selector="ListBox.nav">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.nav ListBoxItem">
+            <Setter Property="Padding" Value="18,11"/>
+        </Style>
+        <Style Selector="ListBox.nav ListBoxItem TextBlock.nav-label">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="LetterSpacing" Value="2"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Foreground" Value="{StaticResource ZoneMuted}"/>
+        </Style>
+        <Style Selector="ListBox.nav ListBoxItem TextBlock.nav-icon">
+            <Setter Property="Foreground" Value="{StaticResource ZoneMuted}"/>
+        </Style>
+        <Style Selector="ListBox.nav ListBoxItem:selected TextBlock.nav-label">
+            <Setter Property="Foreground" Value="{StaticResource ZoneAmber}"/>
+        </Style>
+        <Style Selector="ListBox.nav ListBoxItem:selected TextBlock.nav-icon">
+            <Setter Property="Foreground" Value="{StaticResource ZoneAmber}"/>
+        </Style>
+        <Style Selector="ListBox.nav ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1E2721"/>
+        </Style>
+        <Style Selector="ListBox.nav ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1A211C"/>
+        </Style>
+
+        <!-- Data surfaces sit on the card tone, hairline separators -->
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ZoneHairline}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource ZoneHairline}"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="{StaticResource ZonePanel}"/>
+            <Setter Property="Foreground" Value="{StaticResource ZoneMuted}"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+
+        <!-- Terminal-green log pane -->
+        <Style Selector="ListBox.log">
+            <Setter Property="Background" Value="#0C100E"/>
+            <Setter Property="FontFamily" Value="monospace"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource ZoneTerminal}"/>
+        </Style>
+        <Style Selector="ListBox.log ListBoxItem">
+            <Setter Property="Padding" Value="10,1"/>
+            <Setter Property="MinHeight" Value="0"/>
+        </Style>
     </Application.Styles>
 </Application>

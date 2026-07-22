@@ -4,10 +4,11 @@
              x:Class="StalkerGamma.Gui.Views.ModsView"
              x:DataType="vm:ModsViewModel">
     <Grid RowDefinitions="Auto,Auto,*">
-        <StackPanel Grid.Row="0" Spacing="4">
-            <TextBlock Text="Mods" FontSize="22" FontWeight="Bold"/>
-            <TextBlock Text="{Binding ProfileName, StringFormat='MO2 profile: {0}'}" Opacity="0.8"/>
-            <TextBlock Text="{Binding StatusText}" Opacity="0.8"/>
+        <StackPanel Grid.Row="0" Spacing="2">
+            <TextBlock Classes="eyebrow" Text="LOADOUT"/>
+            <TextBlock Classes="h1" Text="Mods"/>
+            <TextBlock Classes="muted" Text="{Binding ProfileName, StringFormat='MO2 profile: {0}'}" Margin="0,6,0,0"/>
+            <TextBlock Classes="muted" Text="{Binding StatusText}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,12">
@@ -19,14 +20,14 @@
                   SelectedItem="{Binding SelectedMod}"
                   AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
-                <DataGridTemplateColumn Header="Enabled" Width="90">
+                <DataGridTemplateColumn Header="ENABLED" Width="90">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:ModRow">
                             <CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Center"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
+                <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>

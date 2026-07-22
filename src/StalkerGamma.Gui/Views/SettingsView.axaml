@@ -5,15 +5,16 @@
              x:Class="StalkerGamma.Gui.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
     <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="240,*">
-        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="4">
-            <TextBlock Text="Settings" FontSize="22" FontWeight="Bold"/>
-            <TextBlock Text="{Binding StatusText}" Opacity="0.8"/>
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="2">
+            <TextBlock Classes="eyebrow" Text="CONFIGURATION"/>
+            <TextBlock Classes="h1" Text="Settings"/>
+            <TextBlock Classes="mono muted" Text="{Binding StatusText}" Margin="0,6,0,0"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,12">
             <Button Content="New profile" Command="{Binding NewProfileCommand}"/>
             <Button Content="Set active" Command="{Binding SetActiveCommand}"/>
-            <Button Content="Save" Classes="accent" Command="{Binding SaveCommand}"/>
+            <Button Content="Save changes" Classes="accent" Command="{Binding SaveCommand}"/>
             <Button Content="Delete" Command="{Binding DeleteSelectedCommand}"/>
         </StackPanel>
 

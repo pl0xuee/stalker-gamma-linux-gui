@@ -4,56 +4,71 @@
              x:Class="StalkerGamma.Gui.Views.InstallView"
              x:DataType="vm:InstallViewModel">
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
-        <Border Grid.Row="0" Padding="14" CornerRadius="8" Margin="0,0,0,12"
-                Background="{DynamicResource SystemControlBackgroundListLowBrush}">
-            <StackPanel Spacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Button Content="⚡ One-click install" Classes="accent" FontSize="16"
-                            Padding="18,10" Command="{Binding OneClickInstallCommand}"/>
-                    <CheckBox Content="Set up Steam afterwards (Steam will be closed and restarted)"
-                              IsChecked="{Binding SetupSteamAfter}" VerticalAlignment="Center"/>
+        <StackPanel Grid.Row="0" Spacing="2" Margin="0,0,0,14">
+            <TextBlock Classes="eyebrow" Text="DEPLOYMENT"/>
+            <TextBlock Classes="h1" Text="Install"/>
+        </StackPanel>
+
+        <!-- Hero: one-click -->
+        <Border Grid.Row="1" Classes="card-hero" Margin="0,0,0,14">
+            <Grid ColumnDefinitions="4,*">
+                <Rectangle Grid.Column="0" Fill="{StaticResource ZoneAmber}" RadiusX="2" RadiusY="2"
+                           Margin="0,2,14,2"/>
+                <StackPanel Grid.Column="1" Spacing="10">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <Button Content="⚡ One-click install" Classes="accent" FontSize="15"
+                                Padding="20,10" Command="{Binding OneClickInstallCommand}"/>
+                        <CheckBox Content="Set up Steam afterwards (Steam restarts)"
+                                  IsChecked="{Binding SetupSteamAfter}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                               Text="Everything in one run: creates a default profile if you have none (~/Games/GAMMA), downloads and installs Anomaly plus all GAMMA mods (~40 GB), adds the Steam shortcut with your newest Proton, creates the prefix and installs prerequisites. When it finishes, press Play in Steam."/>
                 </StackPanel>
-                <TextBlock Opacity="0.7" FontSize="12" TextWrapping="Wrap"
-                           Text="Does everything: creates a default profile if you have none (~/Games/GAMMA), downloads and installs Anomaly + all GAMMA mods (~40 GB), adds the Steam shortcut with the newest Proton-CachyOS/GE, creates the prefix and installs prerequisites. When it finishes, just press Play in Steam."/>
+            </Grid>
+        </Border>
+
+        <!-- Target paths + options -->
+        <Border Grid.Row="2" Classes="card" Margin="0,0,0,14">
+            <StackPanel Spacing="10">
+                <TextBlock Classes="eyebrow" Text="TARGET"/>
+                <StackPanel Spacing="2">
+                    <TextBlock Classes="mono muted" Text="{Binding AnomalyPath, StringFormat='Anomaly  {0}'}"/>
+                    <TextBlock Classes="mono muted" Text="{Binding GammaPath,   StringFormat='GAMMA    {0}'}"/>
+                    <TextBlock Classes="mono muted" Text="{Binding CachePath,   StringFormat='Cache    {0}'}"/>
+                </StackPanel>
+                <TextBlock Classes="muted" FontSize="11"
+                           Text="Paths come from the active profile — change them on the Settings page."/>
+                <WrapPanel>
+                    <CheckBox Content="Minimal (delete cache after extract)" IsChecked="{Binding Minimal}" Margin="0,0,18,0"/>
+                    <CheckBox Content="Offline (from cache)" IsChecked="{Binding Offline}" Margin="0,0,18,0"/>
+                    <CheckBox Content="Skip GitHub downloads" IsChecked="{Binding SkipGithubDownloads}" Margin="0,0,18,0"/>
+                    <CheckBox Content="Skip extract on hash match" IsChecked="{Binding SkipExtractOnHashMatch}" Margin="0,0,18,0"/>
+                    <CheckBox Content="Preserve user.ltx" IsChecked="{Binding PreserveUserSettings}" Margin="0,0,18,0"/>
+                    <CheckBox Content="Preserve MCM settings" IsChecked="{Binding PreserveMcmSettings}"/>
+                </WrapPanel>
             </StackPanel>
         </Border>
 
-        <StackPanel Grid.Row="1" Spacing="4">
-            <TextBlock Text="Install" FontSize="22" FontWeight="Bold"/>
-            <TextBlock Text="{Binding AnomalyPath, StringFormat='Anomaly: {0}'}" Opacity="0.8"/>
-            <TextBlock Text="{Binding GammaPath, StringFormat='GAMMA: {0}'}" Opacity="0.8"/>
-            <TextBlock Text="{Binding CachePath, StringFormat='Cache: {0}'}" Opacity="0.8"/>
-            <TextBlock Text="Paths come from the active profile (Settings page)." FontSize="12" Opacity="0.6"/>
-        </StackPanel>
-
-        <WrapPanel Grid.Row="2" Margin="0,12,0,0">
-            <CheckBox Content="Minimal (delete cache after extract)" IsChecked="{Binding Minimal}" Margin="0,0,16,0"/>
-            <CheckBox Content="Offline (from cache)" IsChecked="{Binding Offline}" Margin="0,0,16,0"/>
-            <CheckBox Content="Skip GitHub downloads" IsChecked="{Binding SkipGithubDownloads}" Margin="0,0,16,0"/>
-            <CheckBox Content="Skip extract on hash match" IsChecked="{Binding SkipExtractOnHashMatch}" Margin="0,0,16,0"/>
-            <CheckBox Content="Preserve user.ltx" IsChecked="{Binding PreserveUserSettings}" Margin="0,0,16,0"/>
-            <CheckBox Content="Preserve MCM settings" IsChecked="{Binding PreserveMcmSettings}" Margin="0,0,16,0"/>
-        </WrapPanel>
-
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,12">
-            <Button Content="Full install" Classes="accent" Command="{Binding FullInstallCommand}"/>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,0,0,14">
+            <Button Content="Full install" Command="{Binding FullInstallCommand}"/>
             <Button Content="Anomaly only" Command="{Binding AnomalyInstallCommand}"/>
             <Button Content="Verify Anomaly" Command="{Binding CheckAnomalyCommand}"/>
             <Button Content="Purge shader cache" Command="{Binding PurgeShaderCacheCommand}"/>
             <Button Content="Delete ReShade" Command="{Binding DeleteReshadeCommand}"/>
-            <TextBlock Text="{Binding CheckResultText}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+            <TextBlock Text="{Binding CheckResultText}" Classes="mono muted"
+                       VerticalAlignment="Center" Margin="8,0,0,0"/>
         </StackPanel>
 
         <DataGrid Grid.Row="4" ItemsSource="{Binding ModRows}" IsReadOnly="True"
                   AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Mod" Binding="{Binding Name}" Width="*"/>
-                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="120"/>
-                <DataGridTemplateColumn Header="Progress" Width="220">
+                <DataGridTextColumn Header="MOD" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="PHASE" Binding="{Binding Phase}" Width="120"/>
+                <DataGridTemplateColumn Header="PROGRESS" Width="220">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:ModProgressRow">
                             <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
-                                         Height="12" Margin="4,0" ShowProgressText="True"/>
+                                         Height="10" Margin="4,0"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

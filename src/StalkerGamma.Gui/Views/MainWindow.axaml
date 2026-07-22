@@ -6,54 +6,72 @@
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
         x:Class="StalkerGamma.Gui.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Width="1100" Height="720"
-        Title="Stalker GAMMA">
+        Icon="/Assets/app-icon.ico"
+        Width="1160" Height="760"
+        Title="S.T.A.L.K.E.R. GAMMA">
 
     <DockPanel>
         <!-- Status bar -->
-        <Border DockPanel.Dock="Bottom" Padding="10,6" BorderThickness="0,1,0,0"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+        <Border DockPanel.Dock="Bottom" Padding="14,8" Background="{StaticResource ZonePanel}"
+                BorderThickness="0,1,0,0" BorderBrush="{StaticResource ZoneHairline}">
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="Log"
                         Command="{Binding ToggleLogPaneCommand}" Margin="8,0,0,0"/>
                 <Button DockPanel.Dock="Right" Content="Cancel"
                         Command="{Binding CancelCommand}"
                         IsVisible="{Binding IsBusy}" Margin="8,0,0,0"/>
-                <ProgressBar DockPanel.Dock="Right" Width="180" Height="14"
+                <ProgressBar DockPanel.Dock="Right" Width="200" Height="10"
                              Minimum="0" Maximum="1"
                              Value="{Binding OverallProgress}"
-                             IsVisible="{Binding IsBusy}" Margin="8,0,0,0"/>
+                             IsVisible="{Binding IsBusy}" Margin="12,0,0,0"/>
                 <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
+                           Classes="mono" Foreground="{StaticResource ZoneMuted}"
                            TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </Border>
 
         <!-- Log pane -->
-        <Border DockPanel.Dock="Bottom" Height="180"
+        <Border DockPanel.Dock="Bottom" Height="190"
                 IsVisible="{Binding LogPaneOpen}"
-                BorderThickness="0,1,0,0"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
-            <ListBox ItemsSource="{Binding LogLines}" FontFamily="monospace" FontSize="12"/>
+                BorderThickness="0,1,0,0" BorderBrush="{StaticResource ZoneHairline}">
+            <ListBox Classes="log" ItemsSource="{Binding LogLines}"/>
         </Border>
 
-        <!-- Sidebar -->
-        <Border DockPanel.Dock="Left" Width="180" BorderThickness="0,0,1,0"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
-            <ListBox ItemsSource="{Binding NavItems}"
-                     SelectedItem="{Binding SelectedNavItem}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:NavItem">
-                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="4,8">
-                            <TextBlock Text="{Binding Icon}"/>
-                            <TextBlock Text="{Binding Name}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+        <!-- PDA rail -->
+        <Border DockPanel.Dock="Left" Width="212" Background="{StaticResource ZonePanel}"
+                BorderThickness="0,0,1,0" BorderBrush="{StaticResource ZoneHairline}">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Row="0" Margin="18,22,18,18" Spacing="2">
+                    <TextBlock Text="S.T.A.L.K.E.R." FontSize="11" LetterSpacing="4"
+                               Foreground="{StaticResource ZoneMuted}"/>
+                    <TextBlock Text="G.A.M.M.A." FontSize="24" FontWeight="Bold"
+                               LetterSpacing="2" Foreground="{StaticResource ZoneAmber}"/>
+                    <TextBlock Text="ZONE DEPLOYMENT KIT" FontSize="9" LetterSpacing="3"
+                               Foreground="{StaticResource ZoneMuted}" Margin="0,6,0,0"/>
+                    <Rectangle Height="1" Fill="{StaticResource ZoneHairline}" Margin="0,14,0,0"/>
+                </StackPanel>
+
+                <ListBox Grid.Row="1" Classes="nav" ItemsSource="{Binding NavItems}"
+                         SelectedItem="{Binding SelectedNavItem}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NavItem">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Classes="nav-icon" Text="{Binding Icon}" Width="18"
+                                           TextAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Classes="nav-label" Text="{Binding Name}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Grid.Row="2" Margin="18,0,18,16" FontSize="10"
+                           Foreground="{StaticResource ZoneMuted}"
+                           Text="GPL-3.0 · engine by FaithBeam"/>
+            </Grid>
         </Border>
 
         <!-- Page content -->
-        <ContentControl Content="{Binding SelectedNavItem.Page}" Margin="16"/>
+        <ContentControl Content="{Binding SelectedNavItem.Page}" Margin="26,22"/>
     </DockPanel>
 </Window>

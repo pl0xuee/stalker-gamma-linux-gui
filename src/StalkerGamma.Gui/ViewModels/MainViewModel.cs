@@ -47,12 +47,12 @@ public partial class MainViewModel : ViewModelBase
         _runner = runner;
         NavItems =
         [
-            new NavItem("Install", "📦", install),
-            new NavItem("Updates", "🔄", updates),
-            new NavItem("Mods", "🧩", mods),
-            new NavItem("MO2 Profiles", "👤", profiles),
-            new NavItem("Settings", "⚙", settings),
-            new NavItem("Steam", "🎮", steamSetup),
+            new NavItem("INSTALL", "⇣", install),
+            new NavItem("UPDATES", "⟳", updates),
+            new NavItem("MODS", "▤", mods),
+            new NavItem("MO2 PROFILES", "◈", profiles),
+            new NavItem("SETTINGS", "⚙︎", settings),
+            new NavItem("STEAM", "▶", steamSetup),
         ];
         SelectedNavItem = NavItems[0];
 
