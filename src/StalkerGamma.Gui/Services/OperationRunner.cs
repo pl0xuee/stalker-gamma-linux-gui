@@ -72,6 +72,13 @@ public class OperationRunner(
             result = new OperationResult(OperationOutcome.Cancelled);
             log.Append($"{name}: cancelled");
         }
+        catch (Exception) when (_cts?.IsCancellationRequested == true)
+        {
+            // The engine wraps cancellation in its own exception types ("Error extracting
+            // repo" with a canceled inner task), so go by the token, not the exception.
+            result = new OperationResult(OperationOutcome.Cancelled);
+            log.Append($"{name}: cancelled");
+        }
         catch (Exception e)
         {
             result = new OperationResult(OperationOutcome.Failed, e);
