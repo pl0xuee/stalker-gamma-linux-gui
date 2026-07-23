@@ -20,7 +20,6 @@ public static class RunProcessUtility
         process.StartInfo = new ProcessStartInfo
         {
             FileName = fileName,
-            Arguments = string.Join(' ', arguments.Select(x => $"\"{x}\"")),
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -28,6 +27,13 @@ public static class RunProcessUtility
             WorkingDirectory = workingDirectory,
             StandardOutputEncoding = stdOutEncoding,
         };
+        // Use ArgumentList so .NET does the platform-correct escaping. The old manual
+        // "quote each arg" produced broken/injectable command lines for paths containing
+        // quotes (7zz/unzip/tar receive archive and destination paths from mod metadata).
+        foreach (var arg in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(arg);
+        }
         process.EnableRaisingEvents = true;
 
         process.Start();

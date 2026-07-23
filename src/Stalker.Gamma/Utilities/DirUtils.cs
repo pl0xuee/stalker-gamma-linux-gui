@@ -42,9 +42,15 @@ public static class DirUtils
                 }
             }
 
-            // 3. Recurse into subdirectories
+            // 3. Recurse into subdirectories — but never follow symlinks. A malicious mod
+            // archive can extract a directory symlink (e.g. evil -> ~/.ssh); following it
+            // would relax permissions on files outside the install tree.
             foreach (var subDir in di.GetDirectories())
             {
+                if ((subDir.Attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    continue;
+                }
                 NormalizePermissions(subDir.FullName);
             }
         }
