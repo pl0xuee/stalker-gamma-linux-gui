@@ -134,11 +134,20 @@ public partial class ModsViewModel : ViewModelBase
         }
         // Separators ("_separator" suffix in MO2) and real mods both live in <gamma>/mods.
         var modDir = Path.Join(p.Gamma, "mods", mod.Name);
-        if (Directory.Exists(modDir))
+        try
         {
-            DirUtils.NormalizePermissions(modDir);
-            Directory.Delete(modDir, true);
-            _log.Append($"Deleted mod directory {modDir}");
+            if (Directory.Exists(modDir))
+            {
+                DirUtils.NormalizePermissions(modDir);
+                Directory.Delete(modDir, true);
+                _log.Append($"Deleted mod directory {modDir}");
+            }
+        }
+        catch (Exception e)
+        {
+            // Files held open by the running game would otherwise crash the whole app.
+            _log.Append($"Could not delete '{mod.Name}': {e.Message}");
+            return;
         }
         Mods.Remove(mod);
         await SaveAsync();

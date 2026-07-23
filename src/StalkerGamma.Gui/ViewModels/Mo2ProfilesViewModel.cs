@@ -73,10 +73,18 @@ public partial class Mo2ProfilesViewModel : ViewModelBase
             StatusText = "ModOrganizer.ini not found";
             return;
         }
-        var ini = await File.ReadAllTextAsync(iniPath);
-        ini = SelectedProfileRx().Replace(ini, $"selected_profile=@ByteArray({SelectedProfile})");
-        await File.WriteAllTextAsync(iniPath, ini);
-        _log.Append($"MO2 selected profile set to {SelectedProfile}");
+        try
+        {
+            var ini = await File.ReadAllTextAsync(iniPath);
+            ini = SelectedProfileRx().Replace(ini, $"selected_profile=@ByteArray({SelectedProfile})");
+            await Services.AtomicFile.WriteAllTextAsync(iniPath, ini);
+            _log.Append($"MO2 selected profile set to {SelectedProfile}");
+        }
+        catch (Exception e)
+        {
+            StatusText = $"Could not set profile: {e.Message}";
+            _log.Append($"Could not set MO2 profile: {e.Message}");
+        }
         Refresh();
     }
 
@@ -102,9 +110,17 @@ public partial class Mo2ProfilesViewModel : ViewModelBase
         {
             return;
         }
-        DirUtils.NormalizePermissions(profilePath);
-        Directory.Delete(profilePath, true);
-        _log.Append($"Deleted MO2 profile {SelectedProfile}");
+        try
+        {
+            DirUtils.NormalizePermissions(profilePath);
+            Directory.Delete(profilePath, true);
+            _log.Append($"Deleted MO2 profile {SelectedProfile}");
+        }
+        catch (Exception e)
+        {
+            StatusText = $"Could not delete profile: {e.Message}";
+            _log.Append($"Could not delete MO2 profile: {e.Message}");
+        }
         Refresh();
     }
 

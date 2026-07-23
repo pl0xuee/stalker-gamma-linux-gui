@@ -80,6 +80,19 @@ public partial class SteamSetupViewModel : ViewModelBase
     [RelayCommand]
     public async Task PreflightAsync()
     {
+        try
+        {
+            await RunPreflightAsync();
+        }
+        catch (Exception e)
+        {
+            PreflightOk = false;
+            PreflightText = $"Preflight failed: {e.Message}";
+        }
+    }
+
+    private async Task RunPreflightAsync()
+    {
         var problems = new List<string>();
         var infos = new List<string>();
 

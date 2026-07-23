@@ -384,11 +384,18 @@ public partial class InstallViewModel : ViewModelBase
         {
             return;
         }
-        _log.Append(
-            _anomalyService.PurgeShaderCache(p.Anomaly)
-                ? "Shader cache deleted"
-                : "Shader cache not found"
-        );
+        try
+        {
+            _log.Append(
+                _anomalyService.PurgeShaderCache(p.Anomaly)
+                    ? "Shader cache deleted"
+                    : "Shader cache not found"
+            );
+        }
+        catch (Exception e)
+        {
+            _log.Append($"Could not purge shader cache: {e.Message}");
+        }
     }
 
     [RelayCommand]
@@ -399,8 +406,15 @@ public partial class InstallViewModel : ViewModelBase
         {
             return;
         }
-        var deleted = _anomalyService.DeleteReshade(p.Anomaly);
-        _log.Append(deleted.Count > 0 ? $"Deleted: {string.Join(", ", deleted)}" : "No ReShade files found");
+        try
+        {
+            var deleted = _anomalyService.DeleteReshade(p.Anomaly);
+            _log.Append(deleted.Count > 0 ? $"Deleted: {string.Join(", ", deleted)}" : "No ReShade files found");
+        }
+        catch (Exception e)
+        {
+            _log.Append($"Could not delete ReShade: {e.Message}");
+        }
     }
 
     private void ApplyProgressBatch(IList<GammaProgress.GammaInstallProgressEventArgs> batch)

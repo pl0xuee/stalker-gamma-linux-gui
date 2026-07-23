@@ -51,9 +51,12 @@ public partial class CliProfile
             {
                 Directory.CreateDirectory(mo2ProfilePath);
                 var mo2ProfileModListPath = Path.Join(mo2ProfilePath, "modlist.txt");
+                // Dispose the client and bound the wait: an offline "Set active" click would
+                // otherwise leak the handler and block on the default 100s timeout.
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
                 await File.WriteAllTextAsync(
                     mo2ProfileModListPath,
-                    await new HttpClient().GetStringAsync(ModListUrl)
+                    await http.GetStringAsync(ModListUrl)
                 );
             }
             var profiles = new DirectoryInfo(profilePath)

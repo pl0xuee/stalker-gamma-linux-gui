@@ -72,14 +72,19 @@ public partial class CompatToolCatalog
         : t.InternalName.StartsWith("GE-Proton", StringComparison.OrdinalIgnoreCase) ? 1
         : 2;
 
-    private static int[] VersionKey(string s) =>
-        NumberRx().Matches(s).Select(m => int.Parse(m.Value)).ToArray();
+    // long, and clamp on overflow: a date-stamped build (GE-Proton-20250101120000) exceeds
+    // int range and would otherwise throw OverflowException, crashing the Steam page.
+    private static long[] VersionKey(string s) =>
+        NumberRx()
+            .Matches(s)
+            .Select(m => long.TryParse(m.Value, out var n) ? n : long.MaxValue)
+            .ToArray();
 
-    private sealed class VersionComparer : IComparer<int[]>
+    private sealed class VersionComparer : IComparer<long[]>
     {
         public static readonly VersionComparer Instance = new();
 
-        public int Compare(int[]? x, int[]? y)
+        public int Compare(long[]? x, long[]? y)
         {
             x ??= [];
             y ??= [];
