@@ -138,6 +138,10 @@ public static class DirUtils
 
         foreach (var subDir in sourceDirInfo.GetDirectories())
         {
+            if ((subDir.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                continue;
+            }
             if (subDir.EnumerateFiles("*.*", SearchOption.AllDirectories).Any())
             {
                 count += CountFiles(subDir.FullName, fileFilter);
@@ -245,6 +249,12 @@ public static class DirUtils
             if (cancellationToken.IsCancellationRequested)
             {
                 return;
+            }
+            // Never descend into a symlinked directory — a malicious archive could use one
+            // to pull in files from outside the extract tree.
+            if ((subDir.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                continue;
             }
             txtProgress?.Invoke($"Copying {subDir.FullName}");
             // only copy directories if they're not empty
