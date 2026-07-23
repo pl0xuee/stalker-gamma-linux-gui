@@ -37,6 +37,7 @@ public class SteamIntegrationService(
     SteamProcessService steamProcess,
     ProtonPrefixService prefixService,
     ProtontricksService protontricks,
+    SteamGridArtService gridArt,
     LogService log
 )
 {
@@ -66,9 +67,11 @@ public class SteamIntegrationService(
                     ctx.AppName,
                     ctx.Mo2Exe,
                     ctx.StartDir,
-                    ctx.LaunchOptions
+                    ctx.LaunchOptions,
+                    gridArt.InstallIcon(ctx.Steam)
                 );
                 configVdf.SetCompatTool(ctx.Steam, shortcut.UnsignedAppId, ctx.Tool.InternalName);
+                gridArt.InstallGridArt(ctx.Steam, shortcut.UnsignedAppId);
                 log.Append(
                     $"Shortcut '{ctx.AppName}' appid {shortcut.SignedAppId} (compat key {shortcut.UnsignedAppId}) → {ctx.Tool.InternalName}"
                 );
