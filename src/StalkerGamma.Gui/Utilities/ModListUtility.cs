@@ -17,29 +17,42 @@ public static class ModListUtility
 
         return (await File.ReadAllLinesAsync(pathToModList))
             .Where(x => x.Length > 0 && x[0] != '#')
-            .Select(x =>
+            .Select(x => x switch
             {
-                var active = x.StartsWith('-') ? ModStatus.Disabled : ModStatus.Enabled;
-                return new ModListRecord { Status = active, Name = x[1..] };
+                ['+', .. var name] => new ModListRecord { Status = ModStatus.Enabled, Name = name },
+                ['-', .. var name] => new ModListRecord { Status = ModStatus.Disabled, Name = name },
+                // MO2 markers other than +/- (e.g. '*' unmanaged) must round-trip verbatim
+                // and keep their position: modlist order is load order.
+                _ => new ModListRecord { Status = ModStatus.Passthrough, Name = x, Raw = x },
             })
             .ToList();
     }
 
     public static async Task SaveModListAsync(string pathToModList, List<ModListRecord> mods) =>
-        await File.WriteAllLinesAsync(
+        await AtomicWriteLinesAsync(
             pathToModList,
-            mods.Select(x => $"{(x.Status == ModStatus.Enabled ? "+" : "-")}{x.Name}")
+            mods.Select(x => x.Status switch
+            {
+                ModStatus.Passthrough => x.Raw ?? x.Name,
+                ModStatus.Enabled => $"+{x.Name}",
+                _ => $"-{x.Name}",
+            })
         );
+
+    private static async Task AtomicWriteLinesAsync(string path, System.Collections.Generic.IEnumerable<string> lines) =>
+        await Services.AtomicFile.WriteAllTextAsync(path, string.Join('\n', lines) + '\n');
 }
 
 public enum ModStatus
 {
     Enabled,
     Disabled,
+    Passthrough,
 }
 
 public class ModListRecord
 {
     public required ModStatus Status { get; set; }
     public required string Name { get; set; }
+    public string? Raw { get; set; }
 }

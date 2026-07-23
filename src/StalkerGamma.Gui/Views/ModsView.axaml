@@ -23,7 +23,8 @@
                 <DataGridTemplateColumn Header="ENABLED" Width="90">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:ModRow">
-                            <CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Center"/>
+                            <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsToggleable}"
+                                      HorizontalAlignment="Center"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

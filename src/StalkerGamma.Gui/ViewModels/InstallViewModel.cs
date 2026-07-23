@@ -120,6 +120,12 @@ public partial class InstallViewModel : ViewModelBase
         {
             return;
         }
+        // Don't wipe the live progress table if a run is already going (the runner would
+        // reject this click anyway).
+        if (_runner.IsBusy)
+        {
+            return;
+        }
         Dispatcher.UIThread.Post(ModRows.Clear);
         _rowLookup.Clear();
 
@@ -183,6 +189,10 @@ public partial class InstallViewModel : ViewModelBase
             steamCtx = ctx;
         }
 
+        if (_runner.IsBusy)
+        {
+            return;
+        }
         Dispatcher.UIThread.Post(ModRows.Clear);
         _rowLookup.Clear();
 

@@ -18,7 +18,18 @@ public partial class ModRow(ModsViewModel owner) : ObservableObject
     [ObservableProperty]
     public partial bool Enabled { get; set; }
 
-    partial void OnEnabledChanged(bool value) => _ = owner.SaveAsync();
+    /// <summary>Non-null for MO2 lines we don't manage (not +/-); preserved verbatim.</summary>
+    public string? Raw { get; init; }
+
+    public bool IsToggleable => Raw is null;
+
+    partial void OnEnabledChanged(bool value)
+    {
+        if (Raw is null)
+        {
+            _ = owner.SaveAsync();
+        }
+    }
 }
 
 public partial class ModsViewModel : ViewModelBase
@@ -64,10 +75,16 @@ public partial class ModsViewModel : ViewModelBase
             foreach (var mod in mods)
             {
                 Mods.Add(
-                    new ModRow(this) { Name = mod.Name, Enabled = mod.Status == ModStatus.Enabled }
+                    new ModRow(this)
+                    {
+                        Name = mod.Name,
+                        Enabled = mod.Status == ModStatus.Enabled,
+                        Raw = mod.Status == ModStatus.Passthrough ? mod.Raw : null,
+                    }
                 );
             }
-            StatusText = $"{Mods.Count} entries ({Mods.Count(m => m.Enabled)} enabled)";
+            var toggleable = Mods.Where(m => m.IsToggleable).ToList();
+            StatusText = $"{toggleable.Count} entries ({toggleable.Count(m => m.Enabled)} enabled)";
         }
         catch (Exception e)
         {
@@ -95,11 +112,13 @@ public partial class ModsViewModel : ViewModelBase
         await _saveLock.WaitAsync();
         try
         {
-            var mods = Mods.Select(m => new ModListRecord
-            {
-                Name = m.Name,
-                Status = m.Enabled ? ModStatus.Enabled : ModStatus.Disabled,
-            }).ToList();
+            var mods = Mods.Select(m => m.Raw is not null
+                ? new ModListRecord { Name = m.Name, Status = ModStatus.Passthrough, Raw = m.Raw }
+                : new ModListRecord
+                {
+                    Name = m.Name,
+                    Status = m.Enabled ? ModStatus.Enabled : ModStatus.Disabled,
+                }).ToList();
             await ModListUtility.SaveModListAsync(ModListPath(p.Gamma, p.Mo2Profile), mods);
             StatusText = $"{Mods.Count} entries ({Mods.Count(m => m.Enabled)} enabled) — saved";
         }

@@ -56,6 +56,10 @@ public partial class UpdatesViewModel : ViewModelBase
             _log.Append("No active profile — create one in Settings first.");
             return;
         }
+        if (_runner.IsBusy)
+        {
+            return;
+        }
         Updates.Clear();
         SummaryText = "Checking…";
         var result = await _runner.RunAsync(

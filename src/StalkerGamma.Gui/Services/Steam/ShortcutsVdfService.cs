@@ -87,30 +87,45 @@ public class ShortcutsVdfService
             signedAppId = oldSigned;
         }
 
-        var entry = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+        // Start from the existing entry (idempotent rerun / takeover) so the user's own edits
+        // survive — LastPlayTime, custom artwork, collection tags, overlay tweaks. Only the
+        // fields we own are (re)written. New shortcuts get sensible defaults.
+        var entry =
+            existingKey is not null && existing[existingKey] is Dictionary<string, object> prior
+                ? prior
+                : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ShortcutPath"] = "",
+                    ["IsHidden"] = 0,
+                    ["AllowDesktopConfig"] = 1,
+                    ["AllowOverlay"] = 1,
+                    ["OpenVR"] = 0,
+                    ["Devkit"] = 0,
+                    ["DevkitGameID"] = "",
+                    ["DevkitOverrideAppID"] = 0,
+                    ["LastPlayTime"] = 0,
+                    ["IsInstalled"] = 1,
+                    ["FlatpakAppID"] = "",
+                    ["tags"] = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["0"] = "StalkerGammaGui",
+                    },
+                };
+
+        entry["appid"] = signedAppId;
+        entry["AppName"] = appName;
+        entry["Exe"] = $"\"{exePath}\"";
+        entry["StartDir"] = $"\"{startDir}\"";
+        entry["LaunchOptions"] = launchOptions;
+        // Only set the icon if we have one; don't clobber a user-set custom icon with "".
+        if (!string.IsNullOrEmpty(iconPath))
         {
-            ["appid"] = signedAppId,
-            ["AppName"] = appName,
-            ["Exe"] = $"\"{exePath}\"",
-            ["StartDir"] = $"\"{startDir}\"",
-            ["icon"] = iconPath ?? "",
-            ["ShortcutPath"] = "",
-            ["LaunchOptions"] = launchOptions,
-            ["IsHidden"] = 0,
-            ["AllowDesktopConfig"] = 1,
-            ["AllowOverlay"] = 1,
-            ["OpenVR"] = 0,
-            ["Devkit"] = 0,
-            ["DevkitGameID"] = "",
-            ["DevkitOverrideAppID"] = 0,
-            ["LastPlayTime"] = 0,
-            ["IsInstalled"] = 1,
-            ["FlatpakAppID"] = "",
-            ["tags"] = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["0"] = "StalkerGammaGui",
-            },
-        };
+            entry["icon"] = iconPath;
+        }
+        else
+        {
+            entry.TryAdd("icon", "");
+        }
 
         var key =
             existingKey
