@@ -43,7 +43,11 @@ public class ProtontricksService(LogService log)
         }
     }
 
-    public async Task InstallComponentsAsync(long unsignedAppId, CancellationToken ct = default)
+    public async Task InstallComponentsAsync(
+        long unsignedAppId,
+        string? prefixPath = null,
+        CancellationToken ct = default
+    )
     {
         for (var attempt = 1; attempt <= 3; attempt++)
         {
@@ -67,7 +71,7 @@ public class ProtontricksService(LogService log)
                 return;
             }
             log.Append($"protontricks exited with {code}; cleaning up wine processes before retry");
-            Cleanup();
+            Cleanup(prefixPath);
         }
         throw new InvalidOperationException("protontricks failed after 3 attempts — see log");
     }
@@ -103,11 +107,19 @@ public class ProtontricksService(LogService log)
         }
     }
 
-    private void Cleanup()
+    private void Cleanup(string? prefixPath)
     {
+        // wineserver -k with no WINEPREFIX targets ~/.wine — killing the user's unrelated
+        // Wine apps while leaving the stuck GAMMA-prefix processes running. Scope the kill
+        // to the actual prefix; if we don't know it, do nothing rather than nuke ~/.wine.
+        if (string.IsNullOrEmpty(prefixPath))
+        {
+            return;
+        }
         try
         {
             var psi = BuildPsi("wineserver", ["-k"]);
+            psi.Environment["WINEPREFIX"] = prefixPath;
             using var p = Process.Start(psi);
             p?.WaitForExit(15000);
         }
@@ -133,9 +145,14 @@ public class ProtontricksService(LogService log)
         using var p = Process.Start(psi)!;
         var recent = new System.Collections.Concurrent.ConcurrentQueue<string>();
 
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(timeout);
+
         async Task Pump(StreamReader reader)
         {
-            while (await reader.ReadLineAsync(ct) is { } line)
+            // Read on the timeout-linked token so a lingering child that inherited the pipe
+            // write end (wine daemonizes) can't keep the reader open past the deadline.
+            while (await reader.ReadLineAsync(cts.Token) is { } line)
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {
@@ -154,8 +171,6 @@ public class ProtontricksService(LogService log)
         }
 
         var pumps = Task.WhenAll(Pump(p.StandardOutput), Pump(p.StandardError));
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(timeout);
         try
         {
             await p.WaitForExitAsync(cts.Token);
@@ -169,7 +184,15 @@ public class ProtontricksService(LogService log)
             }
             throw new TimeoutException($"{file} timed out after {timeout}");
         }
-        await pumps;
+        // Give the pipes a moment to drain; never let a stuck reader hang the pipeline.
+        try
+        {
+            await pumps.WaitAsync(TimeSpan.FromSeconds(5), ct);
+        }
+        catch (Exception ex) when (ex is TimeoutException or OperationCanceledException)
+        {
+            // Process already exited; a pipe still open means an inherited handle. Drop it.
+        }
         return (p.ExitCode, string.Join('\n', recent));
     }
 

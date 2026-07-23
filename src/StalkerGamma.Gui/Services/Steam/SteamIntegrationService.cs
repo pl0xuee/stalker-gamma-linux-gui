@@ -81,16 +81,27 @@ public class SteamIntegrationService(
         );
         await Step(2, () => steamProcess.StartAndWaitAsync(ct), report);
         await Step(3, () => prefixService.CreateAsync(ctx.Steam, ctx.Tool, shortcut.UnsignedAppId, ct), report);
-        await Step(4, () => protontricks.InstallComponentsAsync(shortcut.UnsignedAppId, ct), report);
+        await Step(
+            4,
+            () => protontricks.InstallComponentsAsync(
+                shortcut.UnsignedAppId,
+                Path.Join(ctx.Steam.CompatDataDir, shortcut.UnsignedAppId.ToString(), "pfx"),
+                ct
+            ),
+            report
+        );
     }
 
     /// <summary>STEAM_COMPAT_MOUNTS for any GAMMA path outside the home mount, always ending in %command%.</summary>
     public static string BuildLaunchOptions(IEnumerable<string> paths)
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var homePrefix = home.EndsWith(Path.DirectorySeparatorChar) ? home : home + Path.DirectorySeparatorChar;
         var mounts = paths
             .Select(Path.GetFullPath)
-            .Where(path => !path.StartsWith(home, StringComparison.Ordinal))
+            // Trailing separator so /home/bob doesn't match /home/bob2; equal-to-home also counts as inside.
+            .Where(path => !path.Equals(home, StringComparison.Ordinal)
+                && !path.StartsWith(homePrefix, StringComparison.Ordinal))
             .Distinct()
             .ToList();
         return mounts.Count > 0
