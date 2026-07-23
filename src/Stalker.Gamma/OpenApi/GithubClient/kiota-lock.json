@@ -1,6 +1,6 @@
 {
   "descriptionHash": "E68579AC988316F275EDF86B38B5DBCC31DC74F11313B99A17FFF7DD8DF336777FF886CDC84388CFFCC18BD84F1BF4F7A6271B7907EAC63AE56831BC73F70276",
-  "descriptionLocation": "../../../../../../../Users/tech/Downloads/api.github.com.yaml",
+  "descriptionLocation": "api.github.com.yaml",
   "lockFileVersion": "1.0.0",
   "kiotaVersion": "1.31.1",
   "clientClassName": "GithubClient",
