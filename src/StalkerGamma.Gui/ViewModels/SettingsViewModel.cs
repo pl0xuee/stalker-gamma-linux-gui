@@ -35,11 +35,17 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool CanInstallUpdate { get; set; }
 
-    public SettingsViewModel(SettingsService settings, LogService log, AppUpdateService appUpdate)
+    public SettingsViewModel(
+        SettingsService settings,
+        LogService log,
+        AppUpdateService appUpdate,
+        OperationRunner runner
+    )
     {
         _settings = settings;
         _log = log;
         _appUpdate = appUpdate;
+        _runner = runner;
         Reload();
     }
 
@@ -83,13 +89,23 @@ public partial class SettingsViewModel : ViewModelBase
         {
             return;
         }
+        // Don't tear the app down mid-operation: a 40GB install shares this process.
+        if (_runner.IsBusy)
+        {
+            UpdateStatusText = "Finish or cancel the running operation before updating.";
+            return;
+        }
         CanInstallUpdate = false;
         try
         {
             var progress = new Progress<double>(p =>
                 UpdateStatusText = $"Downloading {_pendingUpdate.LatestTag}… {p:P0}"
             );
-            var updated = await _appUpdate.DownloadAndInstallAsync(assetUrl, progress);
+            var updated = await _appUpdate.DownloadAndInstallAsync(
+                assetUrl,
+                _pendingUpdate.AssetSha256,
+                progress
+            );
             _log.Append($"App updated to {_pendingUpdate.LatestTag}, restarting");
             UpdateStatusText = "Restarting…";
             System.Diagnostics.Process.Start(
@@ -235,5 +251,6 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly SettingsService _settings;
     private readonly LogService _log;
     private readonly AppUpdateService _appUpdate;
+    private readonly OperationRunner _runner;
     private AppUpdateCheck? _pendingUpdate;
 }
