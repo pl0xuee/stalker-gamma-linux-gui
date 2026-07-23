@@ -118,7 +118,7 @@ public class ShortcutsVdfService
         existing[key] = entry;
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllBytes(path, BinaryVdf.Write(root));
+        AtomicFile.WriteAllBytes(path, BinaryVdf.Write(root));
         return new SteamShortcut(signedAppId, appName, exePath, startDir);
     }
 

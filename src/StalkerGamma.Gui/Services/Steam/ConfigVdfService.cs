@@ -62,7 +62,7 @@ public class ConfigVdfService
             text = text.Insert(braceIdx + 1, block);
         }
 
-        File.WriteAllText(path, text);
+        AtomicFile.WriteAllText(path, text);
     }
 
     /// <summary>Reads back the tool name mapped for an appid, for post-restart verification.</summary>

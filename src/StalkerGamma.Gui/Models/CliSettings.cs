@@ -27,7 +27,7 @@ public class CliSettings
         {
             Directory.CreateDirectory(AppDataPath);
         }
-        await File.WriteAllTextAsync(
+        await Services.AtomicFile.WriteAllTextAsync(
             SettingsPath,
             JsonSerializer.Serialize(this, CliSettingsCtx.Default.CliSettings)
         );

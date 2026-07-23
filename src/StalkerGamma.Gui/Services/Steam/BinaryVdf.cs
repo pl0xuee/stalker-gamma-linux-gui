@@ -53,20 +53,24 @@ public static class BinaryVdf
                     map[name] = ReadCString(data, ref pos);
                     break;
                 case TypeInt:
+                    Need(data, pos, 4);
                     map[name] = BitConverter.ToInt32(data, pos);
                     pos += 4;
                     break;
                 // Passthrough types written by other tools (Steam ROM Manager, Heroic, …);
                 // aborting on them would break users with existing third-party shortcuts.
                 case TypeFloat:
+                    Need(data, pos, 4);
                     map[name] = BitConverter.ToSingle(data, pos);
                     pos += 4;
                     break;
                 case TypeUInt64:
+                    Need(data, pos, 8);
                     map[name] = BitConverter.ToUInt64(data, pos);
                     pos += 8;
                     break;
                 case TypeInt64:
+                    Need(data, pos, 8);
                     map[name] = BitConverter.ToInt64(data, pos);
                     pos += 8;
                     break;
@@ -74,7 +78,18 @@ public static class BinaryVdf
                     throw new InvalidDataException($"Unsupported binary VDF node type 0x{type:x2} at {pos - 1}");
             }
         }
-        return map;
+        // Ran off the end without an EndMap terminator: the file is truncated. Throwing here
+        // stops Upsert from "laundering" a corrupt shortcuts.vdf into a valid one that
+        // silently drops every entry past the truncation point.
+        throw new InvalidDataException("Truncated binary VDF: map not terminated (file may be corrupt)");
+    }
+
+    private static void Need(byte[] data, int pos, int count)
+    {
+        if (pos + count > data.Length)
+        {
+            throw new InvalidDataException("Truncated binary VDF: value runs past end of file");
+        }
     }
 
     private static string ReadCString(byte[] data, ref int pos)
@@ -83,6 +98,10 @@ public static class BinaryVdf
         while (pos < data.Length && data[pos] != 0)
         {
             pos++;
+        }
+        if (pos >= data.Length)
+        {
+            throw new InvalidDataException("Truncated binary VDF: unterminated string");
         }
         var s = Encoding.UTF8.GetString(data, start, pos - start);
         pos++;
