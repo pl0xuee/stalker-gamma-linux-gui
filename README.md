@@ -3,6 +3,8 @@
 An all-in-one Linux desktop app (Avalonia, .NET 10) to download, install, update, and play
 [S.T.A.L.K.E.R. G.A.M.M.A.](https://stalker-gamma.com) on Linux — built for Arch/CachyOS.
 
+![The Install page: one-click install with Steam setup, target paths, and per-mod progress](docs/images/install-page.png)
+
 Features:
 - Full install of Anomaly + GAMMA (engine vendored from
   [FaithBeam/stalker-gamma-cli](https://github.com/FaithBeam/stalker-gamma-cli), see `VENDORED.md`)
