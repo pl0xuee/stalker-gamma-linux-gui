@@ -50,13 +50,16 @@ public class ProtontricksService(LogService log)
             log.Append(
                 $"protontricks attempt {attempt}/3: installing {string.Join(" ", GammaComponents)}"
             );
-            var (code, stdout, stderr) = await RunAsync(
+            var (code, tail) = await RunStreamingAsync(
                 "protontricks",
                 ["--no-bwrap", unsignedAppId.ToString(), "-q", .. GammaComponents],
                 TimeSpan.FromMinutes(15),
                 ct
             );
-            LogTail(stdout, stderr);
+            if (code != 0 && !string.IsNullOrWhiteSpace(tail))
+            {
+                log.Append(tail);
+            }
             if (code == 0 || await VerifyAsync(unsignedAppId, ct))
             {
                 log.Append("Components installed");
@@ -112,6 +115,75 @@ public class ProtontricksService(LogService log)
         {
             // wineserver may not be on PATH; best-effort cleanup only
         }
+    }
+
+    /// <summary>
+    /// Like RunAsync but forwards winetricks' interesting lines to the log pane as they
+    /// happen, so a multi-minute verb install isn't a silent wait. Returns the exit code
+    /// and the output tail for failure diagnostics.
+    /// </summary>
+    private async Task<(int Code, string Tail)> RunStreamingAsync(
+        string file,
+        string[] args,
+        TimeSpan timeout,
+        CancellationToken ct
+    )
+    {
+        var psi = BuildPsi(file, args);
+        using var p = Process.Start(psi)!;
+        var recent = new System.Collections.Concurrent.ConcurrentQueue<string>();
+
+        async Task Pump(StreamReader reader)
+        {
+            while (await reader.ReadLineAsync(ct) is { } line)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+                recent.Enqueue(line);
+                while (recent.Count > 8)
+                {
+                    recent.TryDequeue(out _);
+                }
+                if (IsProgressLine(line))
+                {
+                    log.Append($"  {line.Trim()}");
+                }
+            }
+        }
+
+        var pumps = Task.WhenAll(Pump(p.StandardOutput), Pump(p.StandardError));
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(timeout);
+        try
+        {
+            await p.WaitForExitAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            p.Kill(true);
+            if (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            throw new TimeoutException($"{file} timed out after {timeout}");
+        }
+        await pumps;
+        return (p.ExitCode, string.Join('\n', recent));
+    }
+
+    /// <summary>Winetricks lines worth surfacing: per-verb execution, downloads, problems.</summary>
+    private static bool IsProgressLine(string line)
+    {
+        var t = line.TrimStart();
+        return t.StartsWith("Executing w_do_call", StringComparison.OrdinalIgnoreCase)
+            || t.StartsWith("Executing load_", StringComparison.OrdinalIgnoreCase)
+            || t.StartsWith("Downloading", StringComparison.OrdinalIgnoreCase)
+            || t.StartsWith("Extracting", StringComparison.OrdinalIgnoreCase)
+            || t.StartsWith("Setting", StringComparison.OrdinalIgnoreCase)
+            || t.Contains("error", StringComparison.OrdinalIgnoreCase)
+            || t.StartsWith("warning:", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<(int Code, string StdOut, string StdErr)> RunAsync(
