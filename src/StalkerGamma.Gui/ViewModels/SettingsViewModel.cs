@@ -32,6 +32,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     public partial string? UpdateUrl { get; set; }
 
+    [ObservableProperty]
+    public partial bool CanInstallUpdate { get; set; }
+
     public SettingsViewModel(SettingsService settings, LogService log, AppUpdateService appUpdate)
     {
         _settings = settings;
@@ -45,13 +48,22 @@ public partial class SettingsViewModel : ViewModelBase
     {
         UpdateStatusText = "Checking…";
         UpdateUrl = null;
+        CanInstallUpdate = false;
+        _pendingUpdate = null;
         try
         {
             var result = await _appUpdate.CheckAsync();
             if (result.UpdateAvailable)
             {
-                UpdateStatusText = $"New release available: {result.LatestTag}";
+                _pendingUpdate = result;
                 UpdateUrl = result.ReleaseUrl;
+                // Self-install needs the AppImage path (from $APPIMAGE) and a downloadable
+                // asset; otherwise leave the release page as the manual fallback.
+                CanInstallUpdate =
+                    result.AssetUrl is not null && AppUpdateService.InstalledAppImagePath is not null;
+                UpdateStatusText = CanInstallUpdate
+                    ? $"New release available: {result.LatestTag}"
+                    : $"New release available: {result.LatestTag} — download it from the release page";
             }
             else
             {
@@ -61,6 +73,41 @@ public partial class SettingsViewModel : ViewModelBase
         catch (Exception e)
         {
             UpdateStatusText = $"Check failed: {e.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task InstallUpdateAsync()
+    {
+        if (_pendingUpdate?.AssetUrl is not { } assetUrl)
+        {
+            return;
+        }
+        CanInstallUpdate = false;
+        try
+        {
+            var progress = new Progress<double>(p =>
+                UpdateStatusText = $"Downloading {_pendingUpdate.LatestTag}… {p:P0}"
+            );
+            var updated = await _appUpdate.DownloadAndInstallAsync(assetUrl, progress);
+            _log.Append($"App updated to {_pendingUpdate.LatestTag}, restarting");
+            UpdateStatusText = "Restarting…";
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo { FileName = updated, UseShellExecute = false }
+            );
+            if (
+                Avalonia.Application.Current?.ApplicationLifetime
+                is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            )
+            {
+                desktop.Shutdown();
+            }
+        }
+        catch (Exception e)
+        {
+            CanInstallUpdate = true;
+            UpdateStatusText = $"Update failed: {e.Message}";
+            _log.Append($"App update failed: {e.Message}");
         }
     }
 
@@ -188,4 +235,5 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly SettingsService _settings;
     private readonly LogService _log;
     private readonly AppUpdateService _appUpdate;
+    private AppUpdateCheck? _pendingUpdate;
 }

@@ -21,6 +21,8 @@
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Classes="muted" Text="{Binding AppVersionText}" VerticalAlignment="Center"/>
                 <Button Content="Check for app updates" Command="{Binding CheckAppUpdateCommand}"/>
+                <Button Classes="accent" Content="Update &amp; restart" Command="{Binding InstallUpdateCommand}"
+                        IsVisible="{Binding CanInstallUpdate}"/>
                 <Button Content="Open release page" Command="{Binding OpenReleasePageCommand}"
                         IsVisible="{Binding UpdateUrl, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 <TextBlock Classes="muted" Text="{Binding UpdateStatusText}" VerticalAlignment="Center"/>
