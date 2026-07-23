@@ -28,7 +28,7 @@ public class SteamProcessService(LogService log)
             await Task.Delay(1000, ct);
             if (!IsRunning())
             {
-                log.Append("Steam stopped");
+                await WaitForFullExitAsync(ct);
                 return;
             }
         }
@@ -39,6 +39,26 @@ public class SteamProcessService(LogService log)
         {
             throw new InvalidOperationException("Could not stop Steam");
         }
+        await WaitForFullExitAsync(ct);
+    }
+
+    /// <summary>
+    /// steamwebhelper dies first, but the main steam process lingers several seconds
+    /// finishing teardown (registry.vdf etc.). Relaunching in that window makes the new
+    /// steam defer to the dying instance and exit, leaving nothing running.
+    /// </summary>
+    private async Task WaitForFullExitAsync(CancellationToken ct)
+    {
+        for (var i = 0; i < 30; i++)
+        {
+            if (Run("pgrep", "steam").ExitCode != 0)
+            {
+                log.Append("Steam stopped");
+                return;
+            }
+            await Task.Delay(1000, ct);
+        }
+        log.Append("Steam teardown still lingering after 30s — relaunch may be unreliable");
     }
 
     public async Task StartAndWaitAsync(CancellationToken ct = default)
