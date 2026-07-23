@@ -5,3 +5,4 @@ Icon=stalker-gamma-gui
 Type=Application
 Categories=Game;Utility;
 Terminal=false
+StartupWMClass=StalkerGamma.Gui
