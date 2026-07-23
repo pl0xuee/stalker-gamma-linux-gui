@@ -64,7 +64,20 @@ public partial class MainViewModel : ViewModelBase
                 {
                     LogLines.RemoveAt(0);
                 }
+                // Mirror activity into the status bar during an operation so steps that
+                // report no engine progress (protontricks, prefix creation) aren't silent
+                // with the log pane closed. First line only: multi-line entries are error
+                // dumps that belong in the pane, not squeezed into one status row.
+                if (IsBusy)
+                {
+                    var text = StripTimestamp(line);
+                    var newline = text.IndexOf('\n');
+                    StatusText = (newline >= 0 ? text[..newline] : text).Trim();
+                }
             });
+
+        static string StripTimestamp(string line) =>
+            line.Length > 10 && line[0] == '[' && line[9] == ']' ? line[10..] : line;
 
         runner.Started += name =>
             Dispatcher.UIThread.Post(() =>
