@@ -25,15 +25,72 @@ public partial class Mo2ProfilesViewModel : ViewModelBase
     [ObservableProperty]
     public partial string StatusText { get; set; } = "";
 
+    [ObservableProperty]
+    public partial string NewProfileName { get; set; } = "";
+
     public Mo2ProfilesViewModel(SettingsService settings, LogService log)
     {
         _settings = settings;
         _log = log;
     }
 
+    /// <summary>
+    /// Copies the selected profile into a new one. An empty MO2 profile is useless for GAMMA —
+    /// it needs at least modlist.txt — so duplicating is the only sensible "new".
+    /// </summary>
+    [RelayCommand]
+    private void Duplicate()
+    {
+        var p = _settings.ActiveProfile;
+        if (p is null || SelectedProfile is null)
+        {
+            StatusText = "Select a profile to copy first.";
+            return;
+        }
+        var name = NewProfileName.Trim();
+        if (name.Length == 0)
+        {
+            StatusText = "Type a name for the new profile.";
+            return;
+        }
+        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name is "." or "..")
+        {
+            StatusText = "That name is not valid for a directory.";
+            return;
+        }
+        var source = Path.Join(p.Gamma, "profiles", SelectedProfile);
+        var target = Path.Join(p.Gamma, "profiles", name);
+        if (Directory.Exists(target))
+        {
+            StatusText = $"A profile named '{name}' already exists.";
+            return;
+        }
+        try
+        {
+            Directory.CreateDirectory(target);
+            foreach (var file in new DirectoryInfo(source).GetFiles())
+            {
+                file.CopyTo(Path.Join(target, file.Name));
+            }
+            _log.Append($"Created MO2 profile '{name}' from '{SelectedProfile}'");
+            NewProfileName = "";
+        }
+        catch (Exception e)
+        {
+            StatusText = $"Could not create profile: {e.Message}";
+            _log.Append($"Could not create MO2 profile: {e.Message}");
+            return;
+        }
+        Refresh();
+        SelectedProfile = name;
+    }
+
     [RelayCommand]
     public void Refresh()
     {
+        // Clearing the list drops the ListBox selection, so put it back afterwards — otherwise
+        // "Set as selected" and "Delete" deselect the row you were just working on.
+        var previous = SelectedProfile;
         Profiles.Clear();
         var p = _settings.ActiveProfile;
         if (p is null)
@@ -47,6 +104,10 @@ public partial class Mo2ProfilesViewModel : ViewModelBase
             foreach (var dir in new DirectoryInfo(profilesPath).GetDirectories())
             {
                 Profiles.Add(dir.Name);
+            }
+            if (previous is not null && Profiles.Contains(previous))
+            {
+                SelectedProfile = previous;
             }
             CurrentProfileText = GetSelectedMo2Profile(p.Gamma) is { } sel
                 ? $"Selected in ModOrganizer.ini: {sel}"

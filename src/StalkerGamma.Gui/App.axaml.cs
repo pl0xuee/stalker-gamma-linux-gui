@@ -46,6 +46,7 @@ public partial class App : Application
             .AddSingleton<GetRemoteGitRepoCommit>()
             .AddSingleton<AnomalyService>()
             .AddSingleton<AppUpdateService>()
+            .AddSingleton<UltrawideFixService>()
             .AddSingleton<Services.Steam.SteamLocator>()
             .AddSingleton<Services.Steam.CompatToolCatalog>()
             .AddSingleton<Services.Steam.ShortcutsVdfService>()

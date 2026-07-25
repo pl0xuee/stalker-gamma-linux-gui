@@ -49,16 +49,28 @@ public partial class SteamSetupViewModel : ViewModelBase
     public partial CompatTool? SelectedTool { get; set; }
 
     [ObservableProperty]
-    public partial string PreflightText { get; set; } = "";
+    public partial string PreflightText { get; set; } =
+        "Press \"Check requirements\" to verify Steam, Proton, protontricks and the MO2 install.";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRunSetup))]
     public partial bool PreflightOk { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRunSetup))]
     public partial bool ConfirmRestart { get; set; }
 
     [ObservableProperty]
     public partial string AppName { get; set; } = "STALKER GAMMA";
+
+    /// <summary>Bound by the view to grey out actions while an operation runs.</summary>
+    public OperationRunner Runner => _runner;
+
+    /// <summary>
+    /// Requirements must pass and the restart must be acknowledged before the button lights up —
+    /// clicking a permanently-enabled button only to be told "tick the box" is a dead end.
+    /// </summary>
+    public bool CanRunSetup => PreflightOk && ConfirmRestart && !_runner.IsBusy;
 
     public SteamSetupViewModel(
         SettingsService settings,
@@ -75,6 +87,13 @@ public partial class SteamSetupViewModel : ViewModelBase
         _compatToolCatalog = compatToolCatalog;
         _steamIntegration = steamIntegration;
         _protontricks = protontricks;
+        runner.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(OperationRunner.IsBusy))
+            {
+                OnPropertyChanged(nameof(CanRunSetup));
+            }
+        };
     }
 
     [RelayCommand]

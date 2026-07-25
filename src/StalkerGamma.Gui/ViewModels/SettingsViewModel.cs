@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,12 +16,21 @@ public partial class SettingsViewModel : ViewModelBase
 {
     public ObservableCollection<CliProfile> Profiles { get; } = [];
 
+    /// <summary>Bound by every page that needs to grey out actions during a run.</summary>
+    public OperationRunner Runner { get; }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     public partial CliProfile? SelectedProfile { get; set; }
 
     [ObservableProperty]
     public partial string StatusText { get; set; } = "";
+
+    [ObservableProperty]
+    public partial string PathWarning { get; set; } = "";
+
+    [ObservableProperty]
+    public partial bool HasUnsavedChanges { get; set; }
 
     public bool HasSelection => SelectedProfile is not null;
 
@@ -45,9 +57,11 @@ public partial class SettingsViewModel : ViewModelBase
         _settings = settings;
         _log = log;
         _appUpdate = appUpdate;
-        _runner = runner;
+        Runner = runner;
         Reload();
     }
+
+    partial void OnSelectedProfileChanged(CliProfile? value) => UpdatePathWarning();
 
     [RelayCommand]
     private async Task CheckAppUpdateAsync()
@@ -90,7 +104,7 @@ public partial class SettingsViewModel : ViewModelBase
             return;
         }
         // Don't tear the app down mid-operation: a 40GB install shares this process.
-        if (_runner.IsBusy)
+        if (Runner.IsBusy)
         {
             UpdateStatusText = "Finish or cancel the running operation before updating.";
             return;
@@ -139,15 +153,130 @@ public partial class SettingsViewModel : ViewModelBase
         );
     }
 
+    /// <summary>
+    /// Re-syncs the list with the settings container. Called on every visit to the page because
+    /// a one-click install can create the first profile while another page is showing.
+    /// </summary>
     public void Reload()
     {
+        foreach (var p in _watched)
+        {
+            p.PropertyChanged -= OnProfileEdited;
+        }
+        _watched.Clear();
+
+        var previous = SelectedProfile;
         Profiles.Clear();
         foreach (var p in _settings.Settings.Profiles)
         {
             Profiles.Add(p);
+            p.PropertyChanged += OnProfileEdited;
+            _watched.Add(p);
         }
-        SelectedProfile = _settings.ActiveProfile ?? Profiles.FirstOrDefault();
+        // Keep the profile the user was editing selected; only fall back when it is gone.
+        SelectedProfile = previous is not null && Profiles.Contains(previous)
+            ? previous
+            : _settings.ActiveProfile ?? Profiles.FirstOrDefault();
         StatusText = $"Settings file: {CliSettings.SettingsPath}";
+        UpdatePathWarning();
+    }
+
+    private void OnProfileEdited(object? sender, PropertyChangedEventArgs e)
+    {
+        HasUnsavedChanges = true;
+        if (sender == SelectedProfile)
+        {
+            UpdatePathWarning();
+        }
+    }
+
+    /// <summary>
+    /// Relative paths resolve against the AppImage's launch directory, which scatters a 40GB
+    /// install wherever the app happened to start — warn while editing, not 30GB in.
+    /// </summary>
+    private void UpdatePathWarning()
+    {
+        if (SelectedProfile is not { } p)
+        {
+            PathWarning = "";
+            return;
+        }
+        var bad = new[] { ("Anomaly", p.Anomaly), ("GAMMA", p.Gamma), ("Cache", p.Cache) }
+            .Where(x => string.IsNullOrWhiteSpace(x.Item2) || !Path.IsPathRooted(x.Item2))
+            .Select(x => x.Item1)
+            .ToList();
+        PathWarning = bad.Count > 0
+            ? $"⚠ {string.Join(", ", bad)} must be an absolute path (starting with /)."
+            : "";
+    }
+
+    [RelayCommand]
+    private async Task BrowseAsync(string? which)
+    {
+        if (SelectedProfile is not { } p || which is null)
+        {
+            return;
+        }
+        var current = which switch
+        {
+            "Anomaly" => p.Anomaly,
+            "Gamma" => p.Gamma,
+            _ => p.Cache,
+        };
+        var picked = await PathPicker.PickFolderAsync($"Select the {which} directory", current);
+        if (picked is null)
+        {
+            return;
+        }
+        switch (which)
+        {
+            case "Anomaly":
+                p.Anomaly = picked;
+                break;
+            case "Gamma":
+                p.Gamma = picked;
+                break;
+            default:
+                p.Cache = picked;
+                break;
+        }
+    }
+
+    [RelayCommand]
+    private void Reveal(string? which)
+    {
+        if (SelectedProfile is not { } p || which is null)
+        {
+            return;
+        }
+        var path = which switch
+        {
+            "Anomaly" => p.Anomaly,
+            "Gamma" => p.Gamma,
+            _ => p.Cache,
+        };
+        var (ok, message) = PathPicker.Reveal(path);
+        if (!ok)
+        {
+            StatusText = message;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenSettingsFolder()
+    {
+        var (ok, message) = PathPicker.Reveal(CliSettings.AppDataPath);
+        if (!ok)
+        {
+            StatusText = message;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenLogFile()
+    {
+        var (ok, message) = PathPicker.Reveal(_log.LogFilePath);
+        StatusText = ok ? $"Log folder: {message}" : message;
     }
 
     [RelayCommand]
@@ -155,7 +284,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         // Absolute defaults: relative paths would resolve against the AppImage's launch
         // directory, scattering a 40GB install wherever the app happened to start.
-        var gamesDir = System.IO.Path.Join(
+        var gamesDir = Path.Join(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Games",
             "GAMMA"
@@ -164,21 +293,25 @@ public partial class SettingsViewModel : ViewModelBase
         {
             ProfileName = UniqueName("Gamma"),
             Active = Profiles.Count == 0,
-            Anomaly = System.IO.Path.Join(gamesDir, "anomaly"),
-            Gamma = System.IO.Path.Join(gamesDir, "gamma"),
-            Cache = System.IO.Path.Join(gamesDir, "cache"),
+            Anomaly = Path.Join(gamesDir, "anomaly"),
+            Gamma = Path.Join(gamesDir, "gamma"),
+            Cache = Path.Join(gamesDir, "cache"),
         };
         _settings.Settings.Profiles.Add(profile);
         Profiles.Add(profile);
+        profile.PropertyChanged += OnProfileEdited;
+        _watched.Add(profile);
         SelectedProfile = profile;
+        HasUnsavedChanges = true;
     }
 
     [RelayCommand]
     private async Task SaveAsync()
     {
-        // Force the bound editors to flush by re-reading SelectedProfile state; bindings write
-        // directly into the CliProfile instances, so persisting the container is enough.
+        // Bindings write directly into the CliProfile instances, so persisting the container
+        // is enough.
         await _settings.SaveAsync();
+        HasUnsavedChanges = false;
         StatusText = $"Saved to {CliSettings.SettingsPath}";
         _log.Append("Settings saved");
     }
@@ -205,10 +338,8 @@ public partial class SettingsViewModel : ViewModelBase
             SelectedProfile.Active = true;
         }
         await _settings.SaveAsync();
-        var name = SelectedProfile.ProfileName;
-        Reload();
-        SelectedProfile = Profiles.FirstOrDefault(x => x.ProfileName == name);
-        StatusText = $"Active profile: {name}";
+        HasUnsavedChanges = false;
+        StatusText = $"Active profile: {SelectedProfile.ProfileName}";
     }
 
     [RelayCommand]
@@ -228,12 +359,13 @@ public partial class SettingsViewModel : ViewModelBase
             return;
         }
         _settings.Settings.Profiles.Remove(SelectedProfile);
-        Profiles.Remove(SelectedProfile);
+        SelectedProfile = null;
         if (_settings.ActiveProfile is null && _settings.Settings.Profiles.FirstOrDefault() is { } first)
         {
             first.Active = true;
         }
         await _settings.SaveAsync();
+        HasUnsavedChanges = false;
         Reload();
     }
 
@@ -251,6 +383,6 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly SettingsService _settings;
     private readonly LogService _log;
     private readonly AppUpdateService _appUpdate;
-    private readonly OperationRunner _runner;
+    private readonly List<CliProfile> _watched = [];
     private AppUpdateCheck? _pendingUpdate;
 }

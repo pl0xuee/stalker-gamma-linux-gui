@@ -13,17 +13,20 @@ public class LogService
 {
     public event Action<string>? LineAdded;
 
+    /// <summary>Null when the log directory could not be created; shown on the Settings page.</summary>
+    public string? LogFilePath { get; }
+
     public LogService()
     {
         try
         {
             var logDir = Path.Join(CliSettings.AppDataPath, "logs");
             Directory.CreateDirectory(logDir);
-            _logFile = Path.Join(logDir, "stalker-gamma-gui.log");
+            LogFilePath = Path.Join(logDir, "stalker-gamma-gui.log");
         }
         catch
         {
-            _logFile = null;
+            LogFilePath = null;
         }
     }
 
@@ -31,7 +34,7 @@ public class LogService
     {
         var stamped = $"[{DateTime.Now:HH:mm:ss}] {line}";
         LineAdded?.Invoke(stamped);
-        if (_logFile is null)
+        if (LogFilePath is null)
         {
             return;
         }
@@ -39,7 +42,10 @@ public class LogService
         {
             try
             {
-                File.AppendAllText(_logFile, $"[{DateTime.Now:yyyy-MM-dd}]{stamped}\n");
+                // A full install emits a debug line per file; without rotation the log grows
+                // without bound across runs.
+                Rotate();
+                File.AppendAllText(LogFilePath, $"[{DateTime.Now:yyyy-MM-dd}]{stamped}\n");
             }
             catch
             {
@@ -48,6 +54,23 @@ public class LogService
         }
     }
 
-    private readonly string? _logFile;
+    /// <summary>Caller must hold <see cref="_fileLock"/>.</summary>
+    private void Rotate()
+    {
+        if (++_writesSinceSizeCheck < 500)
+        {
+            return;
+        }
+        _writesSinceSizeCheck = 0;
+        var info = new FileInfo(LogFilePath!);
+        if (info.Exists && info.Length > MaxLogBytes)
+        {
+            File.Move(LogFilePath!, LogFilePath + ".1", overwrite: true);
+        }
+    }
+
+    private const long MaxLogBytes = 8L * 1024 * 1024;
+
     private readonly object _fileLock = new();
+    private int _writesSinceSizeCheck = 500;
 }

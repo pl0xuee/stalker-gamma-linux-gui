@@ -1,11 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using StalkerGamma.Gui.Utilities;
 
 namespace StalkerGamma.Gui.Models;
@@ -13,31 +12,71 @@ namespace StalkerGamma.Gui.Models;
 /// <summary>
 /// Vendored from stalker-gamma-cli/Models/CliProfile.cs. Field names and JSON shape must stay
 /// identical so ~/.config/stalker-gamma/settings.json remains interchangeable with the CLI.
+/// Observable on top of that shape so the profile list, the Install page's target paths and the
+/// unsaved-changes indicator track edits made in the Settings editors (ObservableObject adds no
+/// public properties, so the serialized JSON is unchanged).
 /// </summary>
-public partial class CliProfile
+public partial class CliProfile : ObservableObject
 {
-    public bool Active { get; set; }
-    public string ProfileName { get; set; } = "Gamma";
-    public string Anomaly { get; set; } = Path.Join("gamma", "anomaly");
-    public string Gamma { get; set; } = Path.Join("gamma", "gamma");
-    public string Cache { get; set; } = Path.Join("gamma", "cache");
-    public string Mo2Profile { get; set; } = "G.A.M.M.A";
-    public int DownloadThreads { get; set; } = 2;
-    public string ModPackMakerUrl { get; set; } =
+    [ObservableProperty]
+    public partial bool Active { get; set; }
+
+    [ObservableProperty]
+    public partial string ProfileName { get; set; } = "Gamma";
+
+    [ObservableProperty]
+    public partial string Anomaly { get; set; } = Path.Join("gamma", "anomaly");
+
+    [ObservableProperty]
+    public partial string Gamma { get; set; } = Path.Join("gamma", "gamma");
+
+    [ObservableProperty]
+    public partial string Cache { get; set; } = Path.Join("gamma", "cache");
+
+    [ObservableProperty]
+    public partial string Mo2Profile { get; set; } = "G.A.M.M.A";
+
+    [ObservableProperty]
+    public partial int DownloadThreads { get; set; } = 2;
+
+    [ObservableProperty]
+    public partial string ModPackMakerUrl { get; set; } =
         "https://stalker-gamma.com/api/client/v1/mods/list";
-    public string ModListUrl { get; set; } =
+
+    [ObservableProperty]
+    public partial string ModListUrl { get; set; } =
         "https://raw.githubusercontent.com/Grokitach/Stalker_GAMMA/refs/heads/main/G.A.M.M.A/modpack_data/modlist.txt";
-    public string GammaSetupRepoUrl { get; set; } = "https://github.com/Grokitach/gamma_setup";
-    public string GammaSetupRepoBranch { get; set; } = "main";
-    public string StalkerGammaRepoUrl { get; set; } = "https://github.com/Grokitach/Stalker_GAMMA";
-    public string StalkerGammaRepoBranch { get; set; } = "main";
-    public string GammaLargeFilesRepoUrl { get; set; } =
+
+    [ObservableProperty]
+    public partial string GammaSetupRepoUrl { get; set; } =
+        "https://github.com/Grokitach/gamma_setup";
+
+    [ObservableProperty]
+    public partial string GammaSetupRepoBranch { get; set; } = "main";
+
+    [ObservableProperty]
+    public partial string StalkerGammaRepoUrl { get; set; } =
+        "https://github.com/Grokitach/Stalker_GAMMA";
+
+    [ObservableProperty]
+    public partial string StalkerGammaRepoBranch { get; set; } = "main";
+
+    [ObservableProperty]
+    public partial string GammaLargeFilesRepoUrl { get; set; } =
         "https://github.com/Grokitach/gamma_large_files_v2";
-    public string GammaLargeFilesRepoBranch { get; set; } = "main";
-    public string TeivazAnomalyGunslingerRepoUrl { get; set; } =
+
+    [ObservableProperty]
+    public partial string GammaLargeFilesRepoBranch { get; set; } = "main";
+
+    [ObservableProperty]
+    public partial string TeivazAnomalyGunslingerRepoUrl { get; set; } =
         "https://github.com/Grokitach/teivaz_anomaly_gunslinger";
-    public string TeivazAnomalyGunslingerRepoBranch { get; set; } = "main";
-    public string PythonApiUrl { get; set; } = "http://localhost:8000";
+
+    [ObservableProperty]
+    public partial string TeivazAnomalyGunslingerRepoBranch { get; set; } = "main";
+
+    [ObservableProperty]
+    public partial string PythonApiUrl { get; set; } = "http://localhost:8000";
 
     public async Task SetActiveAsync()
     {
@@ -72,8 +111,6 @@ public partial class CliProfile
             }
         }
     }
-
-    public CliProfile Clone() => (CliProfile)MemberwiseClone();
 
     [GeneratedRegex(@"selected_profile=@ByteArray\((?<profile>.+)\)")]
     private partial Regex SelectedProfileRx();

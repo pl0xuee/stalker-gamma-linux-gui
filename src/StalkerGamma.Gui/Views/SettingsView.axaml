@@ -4,29 +4,49 @@
              xmlns:m="using:StalkerGamma.Gui.Models"
              x:Class="StalkerGamma.Gui.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
+    <UserControl.Styles>
+        <!-- Path row: text box stretches, Browse/Open sit on the right -->
+        <Style Selector="Button.path-action">
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="240,*">
         <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="2">
             <TextBlock Classes="eyebrow" Text="CONFIGURATION"/>
             <TextBlock Classes="h1" Text="Settings"/>
-            <TextBlock Classes="mono muted" Text="{Binding StatusText}" Margin="0,6,0,0"/>
+            <TextBlock Classes="mono muted" Text="{Binding StatusText}" Margin="0,6,0,0"
+                       TextTrimming="CharacterEllipsis"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="10" Margin="0,12">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="New profile" Command="{Binding NewProfileCommand}"/>
-                <Button Content="Set active" Command="{Binding SetActiveCommand}"/>
-                <Button Content="Save changes" Classes="accent" Command="{Binding SaveCommand}"/>
-                <Button Content="Delete" Command="{Binding DeleteSelectedCommand}"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Classes="muted" Text="{Binding AppVersionText}" VerticalAlignment="Center"/>
-                <Button Content="Check for app updates" Command="{Binding CheckAppUpdateCommand}"/>
+            <WrapPanel>
+                <Button Content="New profile" Command="{Binding NewProfileCommand}" Margin="0,0,8,6"/>
+                <Button Content="Set active" Command="{Binding SetActiveCommand}"
+                        IsEnabled="{Binding HasSelection}" Margin="0,0,8,6"/>
+                <Button Content="Save changes" Classes="accent" Command="{Binding SaveCommand}"
+                        IsEnabled="{Binding HasSelection}" Margin="0,0,8,6"/>
+                <Button Content="Delete" Command="{Binding DeleteSelectedCommand}"
+                        IsEnabled="{Binding HasSelection}" Margin="0,0,8,6"/>
+                <Button Content="Open config folder" Command="{Binding OpenSettingsFolderCommand}"
+                        Margin="0,0,8,6"/>
+                <Button Content="Open log" Command="{Binding OpenLogFileCommand}" Margin="0,0,8,6"/>
+                <TextBlock Text="● Unsaved changes" Foreground="{StaticResource ZoneAmber}"
+                           VerticalAlignment="Center" Margin="4,0,0,6"
+                           IsVisible="{Binding HasUnsavedChanges}"/>
+            </WrapPanel>
+            <TextBlock Text="{Binding PathWarning}" Foreground="{StaticResource ZoneAmber}"
+                       TextWrapping="Wrap" IsVisible="{Binding PathWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <WrapPanel>
+                <TextBlock Classes="muted" Text="{Binding AppVersionText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <Button Content="Check for app updates" Command="{Binding CheckAppUpdateCommand}" Margin="0,0,8,0"/>
                 <Button Classes="accent" Content="Update &amp; restart" Command="{Binding InstallUpdateCommand}"
-                        IsVisible="{Binding CanInstallUpdate}"/>
+                        IsVisible="{Binding CanInstallUpdate}" Margin="0,0,8,0"/>
                 <Button Content="Open release page" Command="{Binding OpenReleasePageCommand}"
-                        IsVisible="{Binding UpdateUrl, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        IsVisible="{Binding UpdateUrl, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,0,8,0"/>
                 <TextBlock Classes="muted" Text="{Binding UpdateStatusText}" VerticalAlignment="Center"/>
-            </StackPanel>
+            </WrapPanel>
         </StackPanel>
 
         <ListBox Grid.Row="2" Grid.Column="0" Margin="0,0,12,0"
@@ -43,40 +63,70 @@
         </ListBox>
 
         <ScrollViewer Grid.Row="2" Grid.Column="1" IsVisible="{Binding HasSelection}">
-            <StackPanel Spacing="8" DataContext="{Binding SelectedProfile}" x:DataType="m:CliProfile">
+            <StackPanel Spacing="8">
                 <TextBlock Text="Profile name"/>
-                <TextBox Text="{Binding ProfileName}"/>
-                <TextBlock Text="Anomaly directory"/>
-                <TextBox Text="{Binding Anomaly}"/>
-                <TextBlock Text="GAMMA directory"/>
-                <TextBox Text="{Binding Gamma}"/>
-                <TextBlock Text="Cache directory"/>
-                <TextBox Text="{Binding Cache}"/>
-                <TextBlock Text="MO2 profile"/>
-                <TextBox Text="{Binding Mo2Profile}"/>
-                <TextBlock Text="Download threads"/>
-                <NumericUpDown Value="{Binding DownloadThreads}" Minimum="1" Maximum="20"
+                <TextBox Text="{Binding SelectedProfile.ProfileName}"/>
+
+                <TextBlock Text="Anomaly directory" Margin="0,4,0,0"/>
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding SelectedProfile.Anomaly}"
+                             PlaceholderText="/home/you/Games/GAMMA/anomaly"/>
+                    <Button Grid.Column="1" Classes="path-action" Content="Browse…"
+                            Command="{Binding BrowseCommand}" CommandParameter="Anomaly"/>
+                    <Button Grid.Column="2" Classes="path-action" Content="Open"
+                            Command="{Binding RevealCommand}" CommandParameter="Anomaly"/>
+                </Grid>
+
+                <TextBlock Text="GAMMA directory (Mod Organizer 2 lives here)" Margin="0,4,0,0"/>
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding SelectedProfile.Gamma}"
+                             PlaceholderText="/home/you/Games/GAMMA/gamma"/>
+                    <Button Grid.Column="1" Classes="path-action" Content="Browse…"
+                            Command="{Binding BrowseCommand}" CommandParameter="Gamma"/>
+                    <Button Grid.Column="2" Classes="path-action" Content="Open"
+                            Command="{Binding RevealCommand}" CommandParameter="Gamma"/>
+                </Grid>
+
+                <TextBlock Text="Cache directory (downloads; ~40 GB)" Margin="0,4,0,0"/>
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding SelectedProfile.Cache}"
+                             PlaceholderText="/home/you/Games/GAMMA/cache"/>
+                    <Button Grid.Column="1" Classes="path-action" Content="Browse…"
+                            Command="{Binding BrowseCommand}" CommandParameter="Cache"/>
+                    <Button Grid.Column="2" Classes="path-action" Content="Open"
+                            Command="{Binding RevealCommand}" CommandParameter="Cache"/>
+                </Grid>
+
+                <TextBlock Text="MO2 profile" Margin="0,4,0,0"/>
+                <TextBox Text="{Binding SelectedProfile.Mo2Profile}"/>
+                <TextBlock Classes="muted" FontSize="11"
+                           Text="Name of the Mod Organizer 2 profile, not a path — manage them on the MO2 Profiles page."/>
+
+                <TextBlock Text="Download threads" Margin="0,4,0,0"/>
+                <NumericUpDown Value="{Binding SelectedProfile.DownloadThreads}" Minimum="1" Maximum="20"
                                FormatString="0" Width="140" HorizontalAlignment="Left"/>
-                <Expander Header="Advanced (URLs and branches)">
+
+                <Expander Header="Advanced (URLs and branches)" Margin="0,4,0,0"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                     <StackPanel Spacing="8" Margin="0,8,0,0">
                         <TextBlock Text="ModPackMaker URL"/>
-                        <TextBox Text="{Binding ModPackMakerUrl}"/>
+                        <TextBox Text="{Binding SelectedProfile.ModPackMakerUrl}"/>
                         <TextBlock Text="ModList URL"/>
-                        <TextBox Text="{Binding ModListUrl}"/>
+                        <TextBox Text="{Binding SelectedProfile.ModListUrl}"/>
                         <TextBlock Text="gamma_setup repo / branch"/>
-                        <TextBox Text="{Binding GammaSetupRepoUrl}"/>
-                        <TextBox Text="{Binding GammaSetupRepoBranch}"/>
+                        <TextBox Text="{Binding SelectedProfile.GammaSetupRepoUrl}"/>
+                        <TextBox Text="{Binding SelectedProfile.GammaSetupRepoBranch}"/>
                         <TextBlock Text="Stalker_GAMMA repo / branch"/>
-                        <TextBox Text="{Binding StalkerGammaRepoUrl}"/>
-                        <TextBox Text="{Binding StalkerGammaRepoBranch}"/>
+                        <TextBox Text="{Binding SelectedProfile.StalkerGammaRepoUrl}"/>
+                        <TextBox Text="{Binding SelectedProfile.StalkerGammaRepoBranch}"/>
                         <TextBlock Text="gamma_large_files repo / branch"/>
-                        <TextBox Text="{Binding GammaLargeFilesRepoUrl}"/>
-                        <TextBox Text="{Binding GammaLargeFilesRepoBranch}"/>
+                        <TextBox Text="{Binding SelectedProfile.GammaLargeFilesRepoUrl}"/>
+                        <TextBox Text="{Binding SelectedProfile.GammaLargeFilesRepoBranch}"/>
                         <TextBlock Text="teivaz_anomaly_gunslinger repo / branch"/>
-                        <TextBox Text="{Binding TeivazAnomalyGunslingerRepoUrl}"/>
-                        <TextBox Text="{Binding TeivazAnomalyGunslingerRepoBranch}"/>
+                        <TextBox Text="{Binding SelectedProfile.TeivazAnomalyGunslingerRepoUrl}"/>
+                        <TextBox Text="{Binding SelectedProfile.TeivazAnomalyGunslingerRepoBranch}"/>
                         <TextBlock Text="Python API URL"/>
-                        <TextBox Text="{Binding PythonApiUrl}"/>
+                        <TextBox Text="{Binding SelectedProfile.PythonApiUrl}"/>
                     </StackPanel>
                 </Expander>
             </StackPanel>

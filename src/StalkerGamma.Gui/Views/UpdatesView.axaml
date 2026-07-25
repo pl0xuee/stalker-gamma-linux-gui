@@ -10,13 +10,15 @@
             <TextBlock Classes="muted" Text="{Binding SummaryText}" Margin="0,6,0,0"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,12">
-            <Button Content="Check for updates" Classes="accent" Command="{Binding CheckCommand}"/>
-            <Button Content="Apply updates" Command="{Binding ApplyCommand}"/>
-            <CheckBox Content="Minimal" IsChecked="{Binding Minimal}"/>
-            <CheckBox Content="Preserve user.ltx" IsChecked="{Binding PreserveUserSettings}"/>
-            <CheckBox Content="Preserve MCM" IsChecked="{Binding PreserveMcmSettings}"/>
-        </StackPanel>
+        <WrapPanel Grid.Row="1" Margin="0,12">
+            <Button Content="Check for updates" Classes="accent" Command="{Binding CheckCommand}"
+                    IsEnabled="{Binding !Runner.IsBusy}" Margin="0,0,8,6"/>
+            <Button Content="Apply updates" Command="{Binding ApplyCommand}"
+                    IsEnabled="{Binding !Runner.IsBusy}" Margin="0,0,8,6"/>
+            <CheckBox Content="Minimal" IsChecked="{Binding Minimal}" Margin="0,0,8,6"/>
+            <CheckBox Content="Preserve user.ltx" IsChecked="{Binding PreserveUserSettings}" Margin="0,0,8,6"/>
+            <CheckBox Content="Preserve MCM" IsChecked="{Binding PreserveMcmSettings}" Margin="0,0,8,6"/>
+        </WrapPanel>
 
         <DataGrid Grid.Row="2" ItemsSource="{Binding Updates}" IsReadOnly="True"
                   AutoGenerateColumns="False" GridLinesVisibility="Horizontal">

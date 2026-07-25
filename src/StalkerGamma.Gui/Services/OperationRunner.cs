@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace StalkerGamma.Gui.Services;
@@ -18,6 +19,8 @@ public sealed record OperationResult(OperationOutcome Outcome, Exception? Error 
 /// Runs one engine operation at a time (the engine's GammaProgress/StalkerGammaSettings singletons
 /// are not safe for concurrent operations). Each run gets a fresh DI scope, which also disposes
 /// the scoped GammaInstaller (HttpClient, python server) afterwards.
+/// Observable so every page can grey out its action buttons while a run is in flight instead of
+/// letting a second click fail with a confusing "Another operation is running".
 /// </summary>
 public class OperationRunner(
     IServiceProvider serviceProvider,
@@ -25,9 +28,14 @@ public class OperationRunner(
     LogService log,
     UtilitiesReadyService utilitiesReady,
     Stalker.Gamma.GammaInstallerServices.GammaProgress gammaProgress
-)
+) : ObservableObject
 {
-    public bool IsBusy => _busy == 1;
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set => SetProperty(ref _isBusy, value);
+    }
+
     public string? CurrentOperation { get; private set; }
 
     public event Action<string>? Started;
@@ -48,6 +56,7 @@ public class OperationRunner(
         }
 
         CurrentOperation = name;
+        IsBusy = true;
         _cts = new CancellationTokenSource();
         Started?.Invoke(name);
         log.Append($"{name}: started");
@@ -90,6 +99,7 @@ public class OperationRunner(
             _cts = null;
             CurrentOperation = null;
             Interlocked.Exchange(ref _busy, 0);
+            IsBusy = false;
         }
         Completed?.Invoke(name, result);
         return result;
@@ -98,5 +108,6 @@ public class OperationRunner(
     public void Cancel() => _cts?.Cancel();
 
     private int _busy;
+    private bool _isBusy;
     private CancellationTokenSource? _cts;
 }

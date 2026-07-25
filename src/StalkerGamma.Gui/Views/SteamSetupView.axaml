@@ -12,22 +12,23 @@
                        TextWrapping="Wrap"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,12">
-            <Button Content="Check requirements" Command="{Binding PreflightCommand}"/>
-            <TextBlock Text="Shortcut name:" VerticalAlignment="Center"/>
-            <TextBox Text="{Binding AppName}" Width="180"/>
-            <TextBlock Text="Proton:" VerticalAlignment="Center"/>
+        <WrapPanel Grid.Row="1" Margin="0,12">
+            <Button Content="Check requirements" Command="{Binding PreflightCommand}"
+                    IsEnabled="{Binding !Runner.IsBusy}" Margin="0,0,8,6"/>
+            <TextBlock Text="Shortcut name:" VerticalAlignment="Center" Margin="0,0,8,6"/>
+            <TextBox Text="{Binding AppName}" Width="180" Margin="0,0,8,6"/>
+            <TextBlock Text="Proton:" VerticalAlignment="Center" Margin="0,0,8,6"/>
             <ComboBox ItemsSource="{Binding CompatTools}" SelectedItem="{Binding SelectedTool}"
-                      MinWidth="260"/>
-        </StackPanel>
+                      MinWidth="260" Margin="0,0,8,6"/>
+        </WrapPanel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+        <WrapPanel Grid.Row="2" Margin="0,0,0,8">
             <CheckBox Content="I understand Steam will be closed and restarted"
-                      IsChecked="{Binding ConfirmRestart}"/>
+                      IsChecked="{Binding ConfirmRestart}" Margin="0,0,8,6"/>
             <Button Content="Run Steam setup" Classes="accent"
                     Command="{Binding RunSetupCommand}"
-                    IsEnabled="{Binding PreflightOk}"/>
-        </StackPanel>
+                    IsEnabled="{Binding CanRunSetup}" Margin="0,0,8,6"/>
+        </WrapPanel>
 
         <TextBlock Grid.Row="3" Text="{Binding PreflightText}" TextWrapping="Wrap"
                    Classes="mono muted" Margin="0,0,0,8"/>

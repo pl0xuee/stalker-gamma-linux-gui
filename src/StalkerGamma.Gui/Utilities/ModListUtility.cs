@@ -16,13 +16,14 @@ public static class ModListUtility
         }
 
         return (await File.ReadAllLinesAsync(pathToModList))
-            .Where(x => x.Length > 0 && x[0] != '#')
             .Select(x => x switch
             {
                 ['+', .. var name] => new ModListRecord { Status = ModStatus.Enabled, Name = name },
                 ['-', .. var name] => new ModListRecord { Status = ModStatus.Disabled, Name = name },
-                // MO2 markers other than +/- (e.g. '*' unmanaged) must round-trip verbatim
-                // and keep their position: modlist order is load order.
+                // Everything else round-trips verbatim and keeps its position: MO2 markers other
+                // than +/- (e.g. '*' unmanaged), the generated "# This file was..." header and
+                // blank lines. Dropping them here would silently rewrite the user's file on every
+                // checkbox toggle, since this list is what gets written back.
                 _ => new ModListRecord { Status = ModStatus.Passthrough, Name = x, Raw = x },
             })
             .ToList();

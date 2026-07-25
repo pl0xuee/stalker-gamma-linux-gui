@@ -1,6 +1,9 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -31,6 +34,10 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool LogPaneOpen { get; set; }
 
+    /// <summary>Tail the log pane. Off lets you scroll back without a running install yanking you down.</summary>
+    [ObservableProperty]
+    public partial bool FollowLog { get; set; } = true;
+
     public MainViewModel(
         InstallViewModel install,
         UpdatesViewModel updates,
@@ -45,6 +52,7 @@ public partial class MainViewModel : ViewModelBase
     )
     {
         _runner = runner;
+        _log = log;
         NavItems =
         [
             new NavItem("INSTALL", "⇣", install),
@@ -146,5 +154,32 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleLogPane() => LogPaneOpen = !LogPaneOpen;
 
+    /// <summary>"See log" is useless if you can't get the log out of the app.</summary>
+    [RelayCommand]
+    private async Task CopyLogAsync()
+    {
+        if (
+            Avalonia.Application.Current?.ApplicationLifetime
+                is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow?.Clipboard is not { } clipboard
+        )
+        {
+            return;
+        }
+        await clipboard.SetValueAsync(DataFormat.Text, string.Join('\n', LogLines));
+        StatusText = $"Copied {LogLines.Count} log line(s) to the clipboard";
+    }
+
+    [RelayCommand]
+    private void ClearLog() => LogLines.Clear();
+
+    [RelayCommand]
+    private void OpenLogFile()
+    {
+        var (ok, message) = PathPicker.Reveal(_log.LogFilePath);
+        StatusText = ok ? $"Log folder: {message}" : message;
+    }
+
     private readonly OperationRunner _runner;
+    private readonly LogService _log;
 }

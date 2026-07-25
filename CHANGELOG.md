@@ -3,6 +3,38 @@
 All notable changes to this project are documented here. The release workflow publishes the
 matching version's section as the GitHub release notes, so keep the headings as `## vX.Y.Z`.
 
+## v0.1.7
+
+### Added
+- **Ultrawide UI fix.** One button on the Mods page un-stretches the in-game HUD: it switches on
+  the widescreen fixes GAMMA already downloads but ships disabled — Dynamic Aspect Ratio Tweaks
+  (HUD, 3D PDA, minimap, map markers) plus the 2D scope reticle patch matching your monitor.
+  Pick 21:9, 32:9 or 16:10; undo it any time by unticking those mods.
+- **Browse buttons on every directory field.** Anomaly, GAMMA and Cache get a native folder
+  picker plus an Open button that reveals the folder in your file manager, and the offline
+  install's two list files get file pickers.
+- **Mod list filter** with "Enable shown" / "Disable shown" for bulk toggling — usable on a
+  700-entry list.
+- Duplicate an MO2 profile from the MO2 Profiles page.
+- The log pane gained Copy, Clear and "Open log file", and now follows new output as it arrives.
+- Settings links straight to the config folder and the log file, and flags unsaved edits.
+
+### Fixed
+- **The mod list no longer loses MO2's header comment** every time you tick a checkbox. The file
+  now round-trips exactly, apart from the entries you actually changed.
+- Renaming a profile or editing its paths updates the profile list and the Install page's target
+  paths immediately, instead of showing stale values until a restart.
+- The Settings page now shows a profile created by a one-click install instead of an empty list.
+- Action buttons grey out while an operation is running, rather than failing with a confusing
+  "Another operation is running".
+- "Run Steam setup" stays disabled until the requirement check passes and the restart is
+  acknowledged, and the page says what to press first instead of sitting blank.
+- Settings warns about relative paths, which would otherwise scatter a 40 GB install into
+  whatever directory the app happened to start from.
+- MO2 Profiles keeps your selection after "Set as selected" or "Delete".
+- The log file rotates at 8 MB instead of growing without bound across installs.
+- The window has a minimum size and button rows wrap instead of clipping when it is narrow.
+
 ## v0.1.6
 
 ### Fixed

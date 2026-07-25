@@ -61,6 +61,9 @@ public partial class InstallViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool SetupSteamAfter { get; set; } = true;
 
+    /// <summary>Bound by the view to grey out actions while an operation runs.</summary>
+    public OperationRunner Runner => _runner;
+
     public InstallViewModel(
         OperationRunner runner,
         SettingsService settings,
@@ -443,6 +446,45 @@ public partial class InstallViewModel : ViewModelBase
             }
             row.Phase = e.ProgressType.ToString();
             row.Progress = e.Progress;
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseOfflineListAsync(string? which)
+    {
+        if (which == "ModPackMaker")
+        {
+            var picked = await PathPicker.PickFileAsync(
+                "Select modpack_maker_list.txt",
+                ModPackMakerPath ?? _settings.ActiveProfile?.Cache,
+                ".txt"
+            );
+            if (picked is not null)
+            {
+                ModPackMakerPath = picked;
+            }
+        }
+        else
+        {
+            var picked = await PathPicker.PickFileAsync(
+                "Select modlist.txt",
+                ModListPath ?? _settings.ActiveProfile?.Gamma,
+                ".txt"
+            );
+            if (picked is not null)
+            {
+                ModListPath = picked;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void OpenGammaFolder()
+    {
+        var (ok, message) = PathPicker.Reveal(_settings.ActiveProfile?.Gamma);
+        if (!ok)
+        {
+            CheckResultText = message;
         }
     }
 

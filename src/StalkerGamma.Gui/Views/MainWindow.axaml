@@ -7,7 +7,7 @@
         x:Class="StalkerGamma.Gui.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/app-icon.ico"
-        Width="1160" Height="760"
+        Width="1160" Height="760" MinWidth="900" MinHeight="600"
         Title="S.T.A.L.K.E.R. GAMMA">
 
     <DockPanel>
@@ -31,10 +31,25 @@
         </Border>
 
         <!-- Log pane -->
-        <Border DockPanel.Dock="Bottom" Height="190"
+        <Border DockPanel.Dock="Bottom" Height="220"
                 IsVisible="{Binding LogPaneOpen}"
                 BorderThickness="0,1,0,0" BorderBrush="{StaticResource ZoneHairline}">
-            <ListBox Classes="log" ItemsSource="{Binding LogLines}"/>
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Padding="10,5" Background="{StaticResource ZonePanel}"
+                        BorderThickness="0,0,0,1" BorderBrush="{StaticResource ZoneHairline}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Copy" Padding="10,3" FontSize="11"
+                                Command="{Binding CopyLogCommand}"/>
+                        <Button Content="Clear" Padding="10,3" FontSize="11"
+                                Command="{Binding ClearLogCommand}"/>
+                        <Button Content="Open log file" Padding="10,3" FontSize="11"
+                                Command="{Binding OpenLogFileCommand}"/>
+                        <CheckBox Content="Follow" IsChecked="{Binding FollowLog}"
+                                  VerticalAlignment="Center" FontSize="11"/>
+                    </StackPanel>
+                </Border>
+                <ListBox Name="LogList" Classes="log" ItemsSource="{Binding LogLines}"/>
+            </DockPanel>
         </Border>
 
         <!-- PDA rail -->

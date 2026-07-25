@@ -34,6 +34,9 @@ public partial class UpdatesViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool PreserveMcmSettings { get; set; } = true;
 
+    /// <summary>Bound by the view to grey out actions while an operation runs.</summary>
+    public OperationRunner Runner => _runner;
+
     public UpdatesViewModel(
         OperationRunner runner,
         SettingsService settings,
