@@ -20,14 +20,15 @@ rm -f "$PUBLISH"/*.pdb
 mkdir -p "$APPDIR/usr/bin"
 cp -r "$PUBLISH"/. "$APPDIR/usr/bin/"
 
-# appimagetool only publishes a rolling "continuous" release, so we pin its SHA-256. If this
-# check fails, upstream pushed a new continuous build: review the change and update the hash
-# deliberately (a failed build is the point — it stops a silently-swapped tool from shipping).
+# Pinned to a versioned release (not the rolling "continuous" one, which is re-published in place
+# and broke this pin). If the check fails, the asset changed under a fixed tag: investigate, don't
+# just bump the hash (a failed build is the point — it stops a silently-swapped tool from shipping).
+APPIMAGETOOL_VERSION="1.9.1"
 APPIMAGETOOL="$ROOT/appimagetool-x86_64.AppImage"
-APPIMAGETOOL_SHA256="a6d71e2b6cd66f8e8d16c37ad164658985e0cf5fcaa950c90a482890cb9d13e0"
+APPIMAGETOOL_SHA256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
 if [[ ! -x "$APPIMAGETOOL" ]]; then
     curl -fLo "$APPIMAGETOOL" \
-        "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+        "https://github.com/AppImage/appimagetool/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-x86_64.AppImage"
     actual="$(sha256sum "$APPIMAGETOOL" | cut -d' ' -f1)"
     if [[ "$actual" != "$APPIMAGETOOL_SHA256" ]]; then
         echo "ERROR: appimagetool checksum mismatch (expected $APPIMAGETOOL_SHA256, got $actual)" >&2
