@@ -24,8 +24,7 @@ public class OfflineGammaInstaller(
     IGetStalkerModsFromLocal getStalkerModsFromLocal,
     PreserveUserLtxSettingsService preserveUserLtxSettingsService,
     PreserveMcmSettings preserveMcmSettings,
-    PythonServerService pythonServerService,
-    PythonApiProxy pythonApiProxy
+    StalkerGammaServerProxy stalkerGammaServerProxy
 )
     : GammaInstaller(
         settings,
@@ -40,8 +39,7 @@ public class OfflineGammaInstaller(
         getStalkerModsFromLocal,
         preserveUserLtxSettingsService,
         preserveMcmSettings,
-        pythonServerService,
-        pythonApiProxy
+        stalkerGammaServerProxy
     )
 {
     public override async Task InstallAsync(GammaInstallerArgs args)
@@ -117,29 +115,49 @@ public class OfflineGammaInstaller(
         );
         var teivazTask = Task.Run(
             async () =>
-                await (
-                    (TeivazAnomalyGunslingerRepo)args.TeivazAnomalyGunslingerRecord!
-                ).ExpandFilesAsync(args.CancellationToken),
+                await DownloadSpecialRepoAsync(
+                    args,
+                    args.TeivazAnomalyGunslingerRecord!,
+                    async () =>
+                        await ((ISpecialRepo)args.TeivazAnomalyGunslingerRecord!).ExpandFilesAsync(
+                            args.CancellationToken
+                        )
+                ),
             args.CancellationToken
         );
         var gammaLargeFilesTask = Task.Run(
             async () =>
-                await ((GammaLargeFilesRepo)args.GammaLargeFilesRecord!).ExpandFilesAsync(
-                    args.CancellationToken
+                await DownloadSpecialRepoAsync(
+                    args,
+                    args.GammaLargeFilesRecord!,
+                    async () =>
+                        await ((ISpecialRepo)args.GammaLargeFilesRecord!).ExpandFilesAsync(
+                            args.CancellationToken
+                        )
                 ),
             args.CancellationToken
         );
         var gammaSetupTask = Task.Run(
             async () =>
-                await ((GammaSetupRepo)args.GammaSetupRecord!).ExpandFilesAsync(
-                    args.CancellationToken
+                await DownloadSpecialRepoAsync(
+                    args,
+                    args.GammaSetupRecord!,
+                    async () =>
+                        await ((ISpecialRepo)args.GammaSetupRecord!).ExpandFilesAsync(
+                            args.CancellationToken
+                        )
                 ),
             args.CancellationToken
         );
         var stalkerGammaTask = Task.Run(
             async () =>
-                await ((StalkerGammaRepo)args.StalkerGammaRecord!).ExpandFilesAsync(
-                    args.CancellationToken
+                await DownloadSpecialRepoAsync(
+                    args,
+                    args.StalkerGammaRecord!,
+                    async () =>
+                        await ((ISpecialRepo)args.StalkerGammaRecord!).ExpandFilesAsync(
+                            args.CancellationToken
+                        )
                 ),
             args.CancellationToken
         );
@@ -158,10 +176,10 @@ public class OfflineGammaInstaller(
             await brokenAddon.ExtractAsync(args.CancellationToken);
         }
 
-        await args.GammaSetupRecord!.ExtractAsync(args.CancellationToken);
-        await args.StalkerGammaRecord!.ExtractAsync(args.CancellationToken);
-        await args.GammaLargeFilesRecord!.ExtractAsync(args.CancellationToken);
-        await args.TeivazAnomalyGunslingerRecord!.ExtractAsync(args.CancellationToken);
+        await ExtractSpecialRepoAsync(args, args.GammaSetupRecord!);
+        await ExtractSpecialRepoAsync(args, args.GammaLargeFilesRecord!);
+        await ExtractSpecialRepoAsync(args, args.TeivazAnomalyGunslingerRecord!);
+        await ExtractSpecialRepoAsync(args, args.StalkerGammaRecord!);
         if (args.Minimal)
         {
             args.GammaSetupRecord!.DeleteArchive();

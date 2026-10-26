@@ -50,7 +50,7 @@ public partial class SteamSetupViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string PreflightText { get; set; } =
-        "Press \"Check requirements\" to verify Steam, Proton, protontricks and the MO2 install.";
+        "Checking Steam, Proton, protontricks and the MO2 install…";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanRunSetup))]
@@ -96,9 +96,20 @@ public partial class SteamSetupViewModel : ViewModelBase
         };
     }
 
+    /// <summary>Runs the requirement check the first time the page is shown, so it never opens blank.</summary>
+    public async Task EnsurePreflightAsync()
+    {
+        if (_preflightRan || _runner.IsBusy)
+        {
+            return;
+        }
+        await PreflightAsync();
+    }
+
     [RelayCommand]
     public async Task PreflightAsync()
     {
+        _preflightRan = true;
         try
         {
             await RunPreflightAsync();
@@ -220,6 +231,7 @@ public partial class SteamSetupViewModel : ViewModelBase
         }
     }
 
+    private bool _preflightRan;
     private SteamInstallation? _steam;
     private string? _mo2Exe;
     private readonly SettingsService _settings;

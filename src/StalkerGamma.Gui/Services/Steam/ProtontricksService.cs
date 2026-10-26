@@ -54,12 +54,22 @@ public class ProtontricksService(LogService log)
             log.Append(
                 $"protontricks attempt {attempt}/3: installing {string.Join(" ", GammaComponents)}"
             );
-            var (code, tail) = await RunStreamingAsync(
-                "protontricks",
-                ["--no-bwrap", unsignedAppId.ToString(), "-q", .. GammaComponents],
-                TimeSpan.FromMinutes(15),
-                ct
-            );
+            int code;
+            string tail;
+            try
+            {
+                (code, tail) = await RunStreamingAsync(
+                    "protontricks",
+                    ["--no-bwrap", unsignedAppId.ToString(), "-q", .. GammaComponents],
+                    TimeSpan.FromMinutes(15),
+                    ct
+                );
+            }
+            catch (TimeoutException e)
+            {
+                // A stalled attempt gets the same cleanup + retry as a failed one.
+                (code, tail) = (-1, e.Message);
+            }
             if (code != 0 && !string.IsNullOrWhiteSpace(tail))
             {
                 log.Append(tail);
@@ -89,7 +99,11 @@ public class ProtontricksService(LogService log)
             return false;
         }
         // vcrun2022 shows up as vcrun2022; the d3d/x components appear verbatim.
-        return GammaComponents.All(c => stdout.Contains(c, StringComparison.OrdinalIgnoreCase));
+        // Whole tokens only: "d3dx9" must not be satisfied by "d3dx9_43".
+        var installed = stdout
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return GammaComponents.All(installed.Contains);
     }
 
     private async Task SetWin10Async(long unsignedAppId, CancellationToken ct)
@@ -235,7 +249,21 @@ public class ProtontricksService(LogService log)
             }
             throw new TimeoutException($"{file} timed out after {timeout}");
         }
-        return (p.ExitCode, await stdoutTask, await stderrTask);
+        // A daemonised wineserver can inherit the pipes and keep them open after the child
+        // exits; never let that hang the pipeline.
+        try
+        {
+            await Task.WhenAll(stdoutTask, stderrTask).WaitAsync(TimeSpan.FromSeconds(5), ct);
+        }
+        catch (TimeoutException)
+        {
+            // fall through with whatever was read
+        }
+        return (
+            p.ExitCode,
+            stdoutTask.IsCompletedSuccessfully ? stdoutTask.Result : "",
+            stderrTask.IsCompletedSuccessfully ? stderrTask.Result : ""
+        );
     }
 
     private static ProcessStartInfo BuildPsi(string file, string[] args)

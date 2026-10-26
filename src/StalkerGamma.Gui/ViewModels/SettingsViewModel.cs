@@ -34,6 +34,23 @@ public partial class SettingsViewModel : ViewModelBase
 
     public bool HasSelection => SelectedProfile is not null;
 
+    /// <summary>Global (not per-profile) stalker-gamma-cli-server address; empty = download directly.</summary>
+    public string StalkerGammaServerUrl
+    {
+        get => _settings.Settings.StalkerGammaServerUrl ?? "";
+        set
+        {
+            var normalized = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            if (_settings.Settings.StalkerGammaServerUrl == normalized)
+            {
+                return;
+            }
+            _settings.Settings.StalkerGammaServerUrl = normalized;
+            OnPropertyChanged();
+            HasUnsavedChanges = true;
+        }
+    }
+
     [ObservableProperty]
     public partial string AppVersionText { get; set; } =
         $"Version {AppUpdateService.CurrentVersion}";
@@ -178,6 +195,7 @@ public partial class SettingsViewModel : ViewModelBase
             ? previous
             : _settings.ActiveProfile ?? Profiles.FirstOrDefault();
         StatusText = $"Settings file: {CliSettings.SettingsPath}";
+        OnPropertyChanged(nameof(StalkerGammaServerUrl));
         UpdatePathWarning();
     }
 

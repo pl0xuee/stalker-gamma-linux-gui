@@ -58,7 +58,37 @@ public class SteamIntegrationService(
     {
         SteamShortcut shortcut = null!;
         await Step(0, () => steamProcess.ShutdownAsync(ct), report);
+        try
+        {
+            await WriteShortcutAsync();
+        }
+        catch
+        {
+            // Steam is down and nothing downstream will bring it back; don't leave the user
+            // with no Steam. Best effort — the original failure is what matters.
+            try
+            {
+                await steamProcess.StartAndWaitAsync(CancellationToken.None);
+            }
+            catch
+            {
+                // ignored
+            }
+            throw;
+        }
+        await Step(2, () => steamProcess.StartAndWaitAsync(ct), report);
+        await Step(3, () => prefixService.CreateAsync(ctx.Steam, ctx.Tool, shortcut.UnsignedAppId, ct), report);
         await Step(
+            4,
+            () => protontricks.InstallComponentsAsync(
+                shortcut.UnsignedAppId,
+                Path.Join(ctx.Steam.CompatDataDir, shortcut.UnsignedAppId.ToString(), "pfx"),
+                ct
+            ),
+            report
+        );
+
+        Task WriteShortcutAsync() => Step(
             1,
             () =>
             {
@@ -79,17 +109,6 @@ public class SteamIntegrationService(
             },
             report
         );
-        await Step(2, () => steamProcess.StartAndWaitAsync(ct), report);
-        await Step(3, () => prefixService.CreateAsync(ctx.Steam, ctx.Tool, shortcut.UnsignedAppId, ct), report);
-        await Step(
-            4,
-            () => protontricks.InstallComponentsAsync(
-                shortcut.UnsignedAppId,
-                Path.Join(ctx.Steam.CompatDataDir, shortcut.UnsignedAppId.ToString(), "pfx"),
-                ct
-            ),
-            report
-        );
     }
 
     /// <summary>STEAM_COMPAT_MOUNTS for any GAMMA path outside the home mount, always ending in %command%.</summary>
@@ -105,9 +124,12 @@ public class SteamIntegrationService(
             .Distinct()
             .ToList();
         return mounts.Count > 0
-            ? $"STEAM_COMPAT_MOUNTS=\"{string.Join(':', mounts)}\" %command%"
+            ? $"STEAM_COMPAT_MOUNTS={ShellQuote(string.Join(':', mounts))} %command%"
             : "%command%";
     }
+
+    /// <summary>Steam runs launch options through a shell: single-quote so $, ` and " in a path stay literal.</summary>
+    private static string ShellQuote(string s) => "'" + s.Replace("'", "'\\''") + "'";
 
     private static async Task Step(int index, Func<Task> action, Action<int, StepState, string>? report)
     {

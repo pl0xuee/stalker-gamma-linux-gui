@@ -1,16 +1,18 @@
 using LibCurlImpersonate;
+using Stalker.Gamma.ModDb.Services;
 using Stalker.Gamma.Proxies;
 using Stalker.Gamma.Utilities;
 
 namespace Stalker.Gamma.Services;
 
-public class CurlService(IHttpClientFactory hcf, PythonApiProxy pythonApiProxy)
+public class NetworkService(
+    IHttpClientFactory hcf,
+    StalkerGammaServerProxy stalkerGammaServerProxy,
+    bool useCurl
+)
 {
-    private readonly PythonApiProxy _pythonApiProxy = pythonApiProxy;
-
     public async Task<Dictionary<string, string>> GetHeadersAsync(
         string url,
-        bool useCurl,
         CancellationToken cancellationToken = default
     ) =>
         useCurl
@@ -18,7 +20,7 @@ public class CurlService(IHttpClientFactory hcf, PythonApiProxy pythonApiProxy)
                 () => CurlHttp.GetHeaders(url, http3: true, ct: cancellationToken),
                 cancellationToken
             )
-            : (await _pythonApiProxy.GetHeadersAsync(url, cancellationToken)).ToDictionary(
+            : (await stalkerGammaServerProxy.GetHeadersAsync(url, cancellationToken)).ToDictionary(
                 x => x.Key,
                 x => x.Value.ToString()!
             );
@@ -27,7 +29,7 @@ public class CurlService(IHttpClientFactory hcf, PythonApiProxy pythonApiProxy)
         string url,
         string pathToDownloads,
         string fileName,
-        Action<double>? onProgress = null,
+        Action<DownloadProgress>? onProgress = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -42,15 +44,17 @@ public class CurlService(IHttpClientFactory hcf, PythonApiProxy pythonApiProxy)
 
     public async Task<string> GetStringAsync(
         string url,
-        bool useCurl,
         CancellationToken cancellationToken = default
     ) =>
-        useCurl
-            ? await Task.Run(
-                () => CurlHttp.Fetch(url, http3: true, ct: cancellationToken),
-                cancellationToken
-            )
-            : await _pythonApiProxy.GetStringAsync(url, cancellationToken);
+        CloudflareChallenge.ThrowIfChallenged(
+            useCurl
+                ? await Task.Run(
+                    () => CurlHttp.Fetch(url, http3: true, ct: cancellationToken),
+                    cancellationToken
+                )
+                : await stalkerGammaServerProxy.GetStringAsync(url, cancellationToken),
+            url
+        );
 
     /// <summary>
     /// Whether curl service found curl-impersonate-win.exe and can execute.
@@ -61,11 +65,3 @@ public class CurlService(IHttpClientFactory hcf, PythonApiProxy pythonApiProxy)
 }
 
 public class ModDbBotDetectedException(string msg) : Exception(msg);
-
-public class CurlServiceException(string message) : Exception(message);
-
-/// <summary>
-/// Exit code 35
-/// </summary>
-/// <param name="message"></param>
-public class CurlTlsConnectErrorException(string message) : Exception(message);

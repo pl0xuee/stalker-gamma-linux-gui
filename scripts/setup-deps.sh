@@ -10,13 +10,13 @@ set -euo pipefail
 TARGET="${1:?usage: setup-deps.sh <target-dir>}"
 mkdir -p "$TARGET/resources"
 
-CURL_IMPERSONATE_VERSION="v2.0.0a1"
-SEVENZIP_VERSION="2501"
+CURL_IMPERSONATE_VERSION="v2.2.3"
+SEVENZIP_VERSION="2603"
 # Pinned SHA-256 of the versioned artifacts. If a download fails verification, the upstream
 # asset changed under a fixed version tag (tampering or re-release) — investigate, don't
 # just bump the hash blindly.
-CURL_IMPERSONATE_SHA256="64d3e9e8d8e05f820b4ec9f4491c4068df797ad8b409fe777b12005da2076234"
-SEVENZIP_SHA256="4ca3b7c6f2f67866b92622818b58233dc70367be2f36b498eb0bdeaaa44b53f4"
+CURL_IMPERSONATE_SHA256="d5eb746c109be4d945cc5fcbe8a5c4940471041be4901439d50111cc3c83359d"
+SEVENZIP_SHA256="dc99eff5008f1ab79bd7084c68513701547a808a89502bf4133683535ab3c695"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 

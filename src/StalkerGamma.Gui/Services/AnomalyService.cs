@@ -36,12 +36,16 @@ public class AnomalyService
         var checksums = (await File.ReadAllTextAsync(checksumsPath, cancellationToken))
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(line =>
-            {
-                var split = line.Split(
+                line.Split(
                     ' ',
                     2,
                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-                );
+                )
+            )
+            // A truncated or hand-edited checksums.md5 must not blow up the whole check.
+            .Where(split => split.Length == 2)
+            .Select(split =>
+            {
                 return (
                     Md5: split[0],
                     Path: Path.GetFullPath(

@@ -16,7 +16,7 @@ public class GammaInstallerArgs
     public bool Offline { get; set; }
     public bool PreserveUserLtx { get; set; }
     public bool PreserveMcmSettings { get; set; }
-    public bool UseExperimentalPythonServer { get; set; }
+    public string? StalkerGammaServerUrl { get; set; }
     public ExperimentalPythonServerSettings? ExperimentalPythonServerSettings { get; set; }
     public string? ModPackMakerPath { get; set; }
     public string? ModListPath { get; set; }
@@ -26,6 +26,12 @@ public class GammaInstallerArgs
     public IDownloadableRecord? TeivazAnomalyGunslingerRecord { get; set; }
     public IDownloadableRecord? GammaSetupRecord { get; set; }
     public IDownloadableRecord? StalkerGammaRecord { get; set; }
+
+    /// <summary>
+    /// Output dir names of the ModDb and Github records that update apply re-extracts
+    /// </summary>
+    public IReadOnlySet<string> UpdateOutputDirNames { get; set; } = new HashSet<string>();
+    public ResumeState ResumeState { get; set; } = new();
 
     public static GammaInstallerArgsBuilder Create(string anomaly, string gamma, string cache) =>
         new(anomaly, gamma, cache);

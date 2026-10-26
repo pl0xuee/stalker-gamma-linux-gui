@@ -105,9 +105,10 @@ public partial class CliProfile : ObservableObject
             if (profiles.Contains(Mo2Profile))
             {
                 var mo2Ini = await File.ReadAllTextAsync(modOrganizerIniPath);
+                var name = Mo2Profile;
                 mo2Ini = SelectedProfileRx()
-                    .Replace(mo2Ini, $"selected_profile=@ByteArray({Mo2Profile})");
-                await File.WriteAllTextAsync(modOrganizerIniPath, mo2Ini);
+                    .Replace(mo2Ini, _ => $"selected_profile=@ByteArray({name})");
+                await Services.AtomicFile.WriteAllTextAsync(modOrganizerIniPath, mo2Ini);
             }
         }
     }

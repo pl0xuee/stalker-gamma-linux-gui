@@ -43,6 +43,7 @@ public partial class App : Application
             .AddSingleton<UtilitiesReadyService>()
             .AddSingleton<OperationRunner>()
             .AddSingleton<LogService>()
+            .AddSingleton<ResumeService>()
             .AddSingleton<GetRemoteGitRepoCommit>()
             .AddSingleton<AnomalyService>()
             .AddSingleton<AppUpdateService>()

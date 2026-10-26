@@ -14,9 +14,16 @@ public class SteamProcessService(LogService log)
 {
     public bool IsRunning() => Run("pgrep", "-f steamwebhelper").ExitCode == 0;
 
+    /// <summary>
+    /// The main client alone counts too: a Steam that is updating or whose webhelper crashed
+    /// is still alive and will overwrite shortcuts.vdf/config.vdf when it saves or exits.
+    /// </summary>
+    private static bool AnyRunning() =>
+        Run("pgrep", "-f steamwebhelper").ExitCode == 0 || Run("pgrep", "-x steam").ExitCode == 0;
+
     public async Task ShutdownAsync(CancellationToken ct = default)
     {
-        if (!IsRunning())
+        if (!AnyRunning())
         {
             log.Append("Steam is not running");
             return;
@@ -26,7 +33,7 @@ public class SteamProcessService(LogService log)
         for (var i = 0; i < 15; i++)
         {
             await Task.Delay(1000, ct);
-            if (!IsRunning())
+            if (!AnyRunning())
             {
                 await WaitForFullExitAsync(ct);
                 return;
@@ -35,7 +42,7 @@ public class SteamProcessService(LogService log)
         log.Append("Steam still running, escalating to SIGKILL");
         Run("pkill", "-9 steam");
         await Task.Delay(2000, ct);
-        if (IsRunning())
+        if (AnyRunning())
         {
             throw new InvalidOperationException("Could not stop Steam");
         }
@@ -51,14 +58,15 @@ public class SteamProcessService(LogService log)
     {
         for (var i = 0; i < 30; i++)
         {
-            if (Run("pgrep", "steam").ExitCode != 0)
+            if (Run("pgrep", "-x steam").ExitCode != 0)
             {
                 log.Append("Steam stopped");
                 return;
             }
             await Task.Delay(1000, ct);
         }
-        log.Append("Steam teardown still lingering after 30s — relaunch may be unreliable");
+        // Writing the VDFs now would race the dying client, which overwrites them on exit.
+        throw new InvalidOperationException("Steam did not finish shutting down within 30s");
     }
 
     public async Task StartAndWaitAsync(CancellationToken ct = default)

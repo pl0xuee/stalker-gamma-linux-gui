@@ -34,6 +34,13 @@ public partial class UpdatesViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool PreserveMcmSettings { get; set; } = true;
 
+    /// <summary>A previous update failed and left a resume file behind.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasResume))]
+    public partial string ResumeText { get; set; } = "";
+
+    public bool HasResume => !string.IsNullOrEmpty(ResumeText);
+
     /// <summary>Bound by the view to grey out actions while an operation runs.</summary>
     public OperationRunner Runner => _runner;
 
@@ -41,13 +48,44 @@ public partial class UpdatesViewModel : ViewModelBase
         OperationRunner runner,
         SettingsService settings,
         GetRemoteGitRepoCommit getRemoteGitRepoCommit,
-        LogService log
+        LogService log,
+        ResumeService resume
     )
     {
+        _resume = resume;
         _runner = runner;
         _settings = settings;
         _getRemoteGitRepoCommit = getRemoteGitRepoCommit;
         _log = log;
+        runner.Completed += (_, _) => Dispatcher.UIThread.Post(RefreshResume);
+    }
+
+    public void RefreshResume()
+    {
+        var pending = _resume.Find(_settings.ActiveProfile?.Gamma);
+        _resumeIsUpdate = pending?.Command == ResumeService.UpdateApplyCommand;
+        ResumeText = _resumeIsUpdate
+            ? "The last update did not finish. Resume skips everything that already completed."
+            : "";
+    }
+
+    [RelayCommand]
+    private async Task ResumeUpdateAsync()
+    {
+        if (_resumeIsUpdate)
+        {
+            await RunApplyAsync(resume: true);
+        }
+    }
+
+    [RelayCommand]
+    private void DiscardResume()
+    {
+        if (_settings.ActiveProfile is { } p)
+        {
+            _resume.Delete(p.Gamma);
+        }
+        RefreshResume();
     }
 
     [RelayCommand]
@@ -113,7 +151,9 @@ public partial class UpdatesViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task ApplyAsync()
+    private Task ApplyAsync() => RunApplyAsync(resume: false);
+
+    private async Task RunApplyAsync(bool resume)
     {
         var p = _settings.ActiveProfile;
         if (p is null)
@@ -122,10 +162,17 @@ public partial class UpdatesViewModel : ViewModelBase
             return;
         }
         var result = await _runner.RunAsync(
-            "Update apply",
+            resume ? "Resume update" : "Update apply",
             async (sp, ct) =>
             {
                 var installer = sp.GetRequiredService<IGammaInstaller>();
+                var settings = sp.GetRequiredService<StalkerGammaSettings>();
+                var resumeState = await _resume.LoadAsync(
+                    resume,
+                    p.Gamma,
+                    ResumeService.UpdateApplyCommand,
+                    ct
+                );
                 var updateArgs = GammaInstallerArgs
                     .Create(p.Anomaly, p.Gamma, p.Cache)
                     .WithCancellationToken(ct)
@@ -133,15 +180,23 @@ public partial class UpdatesViewModel : ViewModelBase
                     .WithMinimal(Minimal)
                     .WithPreserveUserLtx(PreserveUserSettings)
                     .WithPreserveMcmSettings(PreserveMcmSettings)
-                    .WithExperimentalPythonServerSettings(
-                        _settings.Settings.ExperimentalModDbSettings.ToServerSettings()
-                    )
+                    .WithUseStalkerGammaServerUrl(settings.StalkerGammaServerUrl)
+                    .WithResumeState(resumeState)
                     .Build();
-                updateArgs.GroupedAddonRecords = await installer.BuildUpdateGroupedAddonRecordsAsync(
-                    updateArgs
-                );
-                installer.BuildSpecialRepoRecords(updateArgs);
-                await installer.InstallAsync(updateArgs);
+                try
+                {
+                    updateArgs.GroupedAddonRecords =
+                        await installer.BuildUpdateGroupedAddonRecordsAsync(updateArgs);
+                    // Update-specific: only re-extracts the git repo files that actually changed.
+                    installer.BuildUpdateSpecialRepoRecords(updateArgs);
+                    await installer.InstallAsync(updateArgs);
+                }
+                catch
+                {
+                    _resume.Write(resumeState, p.Gamma);
+                    throw;
+                }
+                _resume.Delete(p.Gamma);
             }
         );
         if (result.Outcome == OperationOutcome.Succeeded)
@@ -207,6 +262,8 @@ public partial class UpdatesViewModel : ViewModelBase
     }
 
     private readonly OperationRunner _runner;
+    private readonly ResumeService _resume;
+    private bool _resumeIsUpdate;
     private readonly SettingsService _settings;
     private readonly GetRemoteGitRepoCommit _getRemoteGitRepoCommit;
     private readonly LogService _log;

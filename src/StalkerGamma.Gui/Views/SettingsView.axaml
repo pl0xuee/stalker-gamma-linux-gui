@@ -125,8 +125,16 @@
                         <TextBlock Text="teivaz_anomaly_gunslinger repo / branch"/>
                         <TextBox Text="{Binding SelectedProfile.TeivazAnomalyGunslingerRepoUrl}"/>
                         <TextBox Text="{Binding SelectedProfile.TeivazAnomalyGunslingerRepoBranch}"/>
-                        <TextBlock Text="Python API URL"/>
-                        <TextBox Text="{Binding SelectedProfile.PythonApiUrl}"/>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Header="Cloudflare workaround (stalker-gamma-cli-server)" Margin="0,4,0,0"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                                   Text="Experimental. If ModDB keeps blocking downloads with a Cloudflare challenge, run the optional stalker-gamma-cli-server (needs Docker) and enter its address here. Leave empty to download directly. Applies to every profile."/>
+                        <TextBox Text="{Binding StalkerGammaServerUrl}"
+                                 PlaceholderText="http://localhost:5000"/>
                     </StackPanel>
                 </Expander>
             </StackPanel>

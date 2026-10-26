@@ -18,7 +18,7 @@ public sealed record OperationResult(OperationOutcome Outcome, Exception? Error 
 /// <summary>
 /// Runs one engine operation at a time (the engine's GammaProgress/StalkerGammaSettings singletons
 /// are not safe for concurrent operations). Each run gets a fresh DI scope, which also disposes
-/// the scoped GammaInstaller (HttpClient, python server) afterwards.
+/// the scoped GammaInstaller (HttpClient) afterwards.
 /// Observable so every page can grey out its action buttons while a run is in flight instead of
 /// letting a second click fail with a confusing "Another operation is running".
 /// </summary>
@@ -63,14 +63,15 @@ public class OperationRunner(
         OperationResult result;
         try
         {
+            gammaProgress.Reset();
+            // Before the dependency check: whether curl is needed depends on the server URL.
+            settingsService.ApplyActiveProfileToEngine(downloadThreadsOverride);
             // Fail fast, not 30GB in: the CLI checks dependencies before every command.
             var (ready, reason) = utilitiesReady.Check();
             if (!ready)
             {
                 throw new InvalidOperationException($"Missing dependencies:\n{reason}");
             }
-            gammaProgress.Reset();
-            settingsService.ApplyActiveProfileToEngine(downloadThreadsOverride);
             using var scope = serviceProvider.CreateScope();
             await Task.Run(() => work(scope.ServiceProvider, _cts.Token), _cts.Token);
             result = new OperationResult(OperationOutcome.Succeeded);

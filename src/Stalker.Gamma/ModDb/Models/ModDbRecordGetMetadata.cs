@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Stalker.Gamma.GammaInstallerServices;
+using Stalker.Gamma.ModDb.Services;
 using Stalker.Gamma.Models;
 using Stalker.Gamma.Services;
 using Stalker.Gamma.Utilities;
@@ -18,8 +19,7 @@ public class ModDbRecordGetMetadata(
     GammaProgress gammaProgress,
     ModDbService modDbService,
     GetCanonicalLinkFromModDbStartLink getCanonicalLinkFromModDbStartLink,
-    ModDbGetAddonMetadataService modDbGetAddonMetadataService,
-    bool useCurl = true
+    ModDbGetAddonMetadataService modDbGetAddonMetadataService
 ) : IDownloadableRecord
 {
     public string Name { get; } = name;
@@ -29,7 +29,7 @@ public class ModDbRecordGetMetadata(
     public string StartLink { get; set; } = startLink;
     public string NiceUrl { get; set; } = null!;
     private List<string> Instructions { get; } = instructions;
-    private string OutputDirName { get; } = outputDirName;
+    public string OutputDirName { get; } = outputDirName;
     public string Url => StartLink;
     public string Md5 { get; set; } = null!;
 
@@ -53,14 +53,13 @@ public class ModDbRecordGetMetadata(
                 await _modDbService.DownloadAddonAsync(
                     Url,
                     DownloadPath,
-                    pct => OnProgress(GammaProgressType.Download, pct),
-                    useCurl: _useCurl,
+                    p => OnProgress(GammaProgressType.Download, p.Percent, p),
                     cancellationToken: cancellationToken
                 );
                 Downloaded = true;
             }
         }
-        catch (Exception e)
+        catch (Exception e) when (e is not CloudflareChallengeException)
         {
             throw new ModDbRecordException(
                 $"""
@@ -116,12 +115,10 @@ public class ModDbRecordGetMetadata(
     {
         var canonicalLink = await _getCanonicalLinkFromModDbStartLink.GetCanonicalLinkAsync(
             StartLink,
-            useCurl: _useCurl,
             ct: cancellationToken
         );
         var metadata = await _modDbGetAddonMetadataService.GetAsync(
             canonicalLink,
-            useCurl: _useCurl,
             ct: cancellationToken
         );
         ArchiveName = metadata.Filename;
@@ -131,18 +128,24 @@ public class ModDbRecordGetMetadata(
 
     public bool Downloaded { get; set; }
 
-    private void OnProgress(GammaProgressType operation, double pct) =>
-        _gammaProgress.OnProgressChanged(ProgFunc(operation, pct));
+    private void OnProgress(
+        GammaProgressType operation,
+        double? pct,
+        DownloadProgress? download = null
+    ) => _gammaProgress.OnProgressChanged(ProgFunc(operation, pct, download));
 
     private GammaProgress.GammaInstallProgressEventArgs ProgFunc(
         GammaProgressType operation,
-        double pct
+        double? pct,
+        DownloadProgress? download
     ) =>
         new()
         {
             Name = Name,
             ProgressType = operation,
             Progress = pct,
+            BytesDownloaded = download?.BytesRead,
+            TotalBytes = download?.TotalBytes,
             Url = Url,
             ArchiveName = ArchiveName,
             DownloadPath = DownloadPath,
@@ -157,5 +160,4 @@ public class ModDbRecordGetMetadata(
         getCanonicalLinkFromModDbStartLink;
     private readonly ModDbGetAddonMetadataService _modDbGetAddonMetadataService =
         modDbGetAddonMetadataService;
-    private readonly bool _useCurl = useCurl;
 }

@@ -7,7 +7,8 @@ An all-in-one Linux desktop app (Avalonia, .NET 10) to download, install, update
 
 Features:
 - Full install of Anomaly + GAMMA (engine vendored from
-  [FaithBeam/stalker-gamma-cli](https://github.com/FaithBeam/stalker-gamma-cli), see `VENDORED.md`)
+  [FaithBeam/stalker-gamma-cli](https://github.com/FaithBeam/stalker-gamma-cli) 1.40.0, see `VENDORED.md`)
+- Resume a failed install or update, fast incremental updates, optional Anomaly mirror
 - Update check/apply, MO2 mod enable/disable/delete, MO2 profile management
 - Config profiles shared with the upstream CLI (`~/.config/stalker-gamma/settings.json`)
 - Steam integration: adds a non-Steam shortcut for Mod Organizer 2, auto-selects the newest

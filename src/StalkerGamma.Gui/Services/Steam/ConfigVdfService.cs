@@ -57,6 +57,10 @@ public class ConfigVdfService
                 throw new InvalidDataException("No \"Steam\" block found in config.vdf");
             }
             var braceIdx = text.IndexOf('{', steamIdx);
+            if (braceIdx < 0)
+            {
+                throw new InvalidDataException("Malformed \"Steam\" block in config.vdf");
+            }
             var block =
                 "\n\t\t\t\t\"CompatToolMapping\"\n\t\t\t\t{\n" + entry + "\t\t\t\t}\n";
             text = text.Insert(braceIdx + 1, block);

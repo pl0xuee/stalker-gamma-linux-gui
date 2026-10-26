@@ -19,7 +19,11 @@ public class CliSettings
 
     public List<CliProfile> Profiles { get; set; } = [];
 
-    public ExperimentalModDbSettings ExperimentalModDbSettings { get; set; } = new();
+    /// <summary>
+    /// GUI-only (the CLI takes this as a flag): base URL of a stalker-gamma-cli-server instance
+    /// used to get past ModDB's Cloudflare challenge. Unknown to older CLIs, which ignore it.
+    /// </summary>
+    public string? StalkerGammaServerUrl { get; set; }
 
     public async Task<string?> SaveAsync()
     {

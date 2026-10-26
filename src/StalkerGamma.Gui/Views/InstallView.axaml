@@ -3,7 +3,7 @@
              xmlns:vm="using:StalkerGamma.Gui.ViewModels"
              x:Class="StalkerGamma.Gui.Views.InstallView"
              x:DataType="vm:InstallViewModel">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*">
         <StackPanel Grid.Row="0" Spacing="2" Margin="0,0,0,14">
             <TextBlock Classes="eyebrow" Text="DEPLOYMENT"/>
             <TextBlock Classes="h1" Text="Install"/>
@@ -17,8 +17,27 @@
                        Text="No active profile yet. One-click install creates one at ~/Games/GAMMA, or set your own directories on the Settings page first."/>
         </Border>
 
+        <!-- A failed install leaves resume.txt behind -->
+        <Border Grid.Row="2" Classes="card" Margin="0,0,0,14" Padding="14,10"
+                IsVisible="{Binding HasResume}" BorderBrush="{StaticResource ZoneAmber}">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="Unfinished install found" FontWeight="SemiBold"
+                               Foreground="{StaticResource ZoneAmber}"/>
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding ResumeText}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
+                    <Button Content="Resume" Classes="accent" Command="{Binding ResumeInstallCommand}"
+                            IsEnabled="{Binding !Runner.IsBusy}"/>
+                    <Button Content="Discard" Command="{Binding DiscardResumeCommand}"
+                            IsEnabled="{Binding !Runner.IsBusy}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- Hero: one-click -->
-        <Border Grid.Row="2" Classes="card-hero" Margin="0,0,0,14">
+        <Border Grid.Row="3" Classes="card-hero" Margin="0,0,0,14">
             <Grid ColumnDefinitions="Auto,*">
                 <Rectangle Grid.Column="0" Width="4" Fill="{StaticResource ZoneAmber}"
                            RadiusX="2" RadiusY="2" Margin="0,2,16,2"/>
@@ -37,7 +56,7 @@
         </Border>
 
         <!-- Target paths + options -->
-        <Border Grid.Row="3" Classes="card" Margin="0,0,0,14">
+        <Border Grid.Row="4" Classes="card" Margin="0,0,0,14">
             <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Grid.Column="0" Classes="eyebrow" Text="TARGET" VerticalAlignment="Center"/>
@@ -60,7 +79,9 @@
                     <CheckBox Content="Skip GitHub downloads" IsChecked="{Binding SkipGithubDownloads}" Margin="0,0,18,0"/>
                     <CheckBox Content="Skip extract on hash match" IsChecked="{Binding SkipExtractOnHashMatch}" Margin="0,0,18,0"/>
                     <CheckBox Content="Preserve user.ltx" IsChecked="{Binding PreserveUserSettings}" Margin="0,0,18,0"/>
-                    <CheckBox Content="Preserve MCM settings" IsChecked="{Binding PreserveMcmSettings}"/>
+                    <CheckBox Content="Preserve MCM settings" IsChecked="{Binding PreserveMcmSettings}" Margin="0,0,18,0"/>
+                    <CheckBox Content="Anomaly mirror (experimental, faster)" IsChecked="{Binding UseAnomalyMirror}"
+                              ToolTip.Tip="Download a repacked Anomaly archive from files.faith-beam.com first, falling back to ModDB if it fails."/>
                 </WrapPanel>
                 <StackPanel Spacing="6" IsVisible="{Binding Offline}">
                     <TextBlock Classes="muted" FontSize="11"
@@ -81,7 +102,7 @@
             </StackPanel>
         </Border>
 
-        <StackPanel Grid.Row="4" Spacing="6" Margin="0,0,0,14">
+        <StackPanel Grid.Row="5" Spacing="6" Margin="0,0,0,14">
             <WrapPanel>
                 <Button Content="Full install" Command="{Binding FullInstallCommand}"
                         IsEnabled="{Binding !Runner.IsBusy}" Margin="0,0,8,6"/>
@@ -98,20 +119,28 @@
                        IsVisible="{Binding CheckResultText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
 
-        <DataGrid Grid.Row="5" ItemsSource="{Binding ModRows}" IsReadOnly="True" MinHeight="100"
-                  AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="MOD" Binding="{Binding Name}" Width="*"/>
-                <DataGridTextColumn Header="PHASE" Binding="{Binding Phase}" Width="120"/>
-                <DataGridTemplateColumn Header="PROGRESS" Width="220">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vm:ModProgressRow">
-                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
-                                         Height="10" Margin="4,0"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+        <Grid Grid.Row="6">
+            <DataGrid ItemsSource="{Binding ModRows}" IsReadOnly="True" MinHeight="100"
+                      AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="MOD" Binding="{Binding Name}" Width="*"/>
+                    <DataGridTextColumn Header="PHASE" Binding="{Binding Phase}" Width="100"/>
+                    <DataGridTemplateColumn Header="PROGRESS" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:ModProgressRow">
+                                <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
+                                             IsIndeterminate="{Binding IsIndeterminate}"
+                                             Height="10" Margin="4,0"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="DONE" Binding="{Binding Detail}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Margin="0,24,0,0" IsHitTestVisible="False" TextAlignment="Center"
+                       IsVisible="{Binding !ModRows.Count}"
+                       Text="Per-mod progress shows up here once an install starts."/>
+        </Grid>
     </Grid>
 </UserControl>

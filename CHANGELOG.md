@@ -3,6 +3,57 @@
 All notable changes to this project are documented here. The release workflow publishes the
 matching version's section as the GitHub release notes, so keep the headings as `## vX.Y.Z`.
 
+## v0.1.8
+
+### Added
+- **Engine updated to stalker-gamma-cli 1.40.0** (from 1.3x). What that brings:
+  - **Much faster updates.** "Apply updates" only re-extracts the files that changed in the four
+    GAMMA git repos instead of expanding all of them every time.
+  - **Faster installs and reinstalls**: git repo extraction is multi-threaded.
+  - **Resume a failed install or update.** A failed run leaves `resume.txt` in the GAMMA folder;
+    the Install and Updates pages show an "Unfinished install/update found" banner with
+    **Resume** (skips everything that already completed) and **Discard**.
+  - **Correct progress for downloads with no known size.** Addons that used to report absurd
+    percentages like 1,000,000% now show the megabytes downloaded, with an indeterminate bar.
+  - **Anomaly mirror (experimental).** Tick "Anomaly mirror" on the Install page to fetch a
+    repacked, faster-to-extract Anomaly archive first, falling back to ModDB.
+  - **Cloudflare workaround (experimental).** Settings → "Cloudflare workaround" takes the address
+    of an optional `stalker-gamma-cli-server` (needs Docker) for when ModDB keeps challenging you.
+    This replaces the old bundled-Python approach, which no longer exists upstream.
+  - Clearer network errors (a hint about DNS, firewall, TLS or QUIC instead of a bare curl code).
+- Bundled curl-impersonate is now v2.2.3 and 7-Zip 26.03, matching upstream.
+
+### Changed
+- Settings no longer has a "Python API URL" field (the engine no longer uses it; the value is left
+  in `settings.json` untouched so the CLI still reads the same file). The unused
+  `ExperimentalModDbSettings` block is dropped from `settings.json` the next time you save.
+- Nav icons are drawn vector icons that line up and scale, instead of mismatched text glyphs.
+- Lists (MO2 profiles, Settings profile list) use the app's dark palette instead of Fluent's grey.
+- Steam page is laid out as Requirements / Setup / Steps cards, and runs the requirement check
+  automatically when you open it instead of showing an empty Proton picker.
+- Empty tables say what they are for instead of showing a blank box.
+- The window can be narrower (minimum 640 px) so it tiles cleanly in a tiling window manager.
+
+### Fixed
+- Switching the MO2 profile no longer corrupts `ModOrganizer.ini` when a profile name contains
+  `$` (it was read as a regex substitution), and it now says so instead of reporting success when
+  `ModOrganizer.ini` has no `selected_profile` line.
+- "Verify Anomaly" shows progress while it hashes instead of sitting on "Checking…", and a
+  truncated `checksums.md5` no longer aborts the whole check.
+- Whether curl is required is decided after the active profile's settings are applied, so using the
+  Cloudflare workaround server no longer demands libcurl.
+- Git extraction rejects tree entries that would write outside the target folder.
+- Steam setup hardening:
+  - Steam is detected as running even when only the main client is up (updating, or its web
+    helper crashed), and setup stops if it will not exit, instead of writing shortcuts that the
+    dying client then overwrites.
+  - If writing the shortcut fails after Steam was shut down, Steam is started again.
+  - A stalled protontricks run is cleaned up and retried like a failed one, and a leftover wine
+    process holding the output pipe can no longer hang the step.
+  - Component verification matches whole names (`d3dx9` no longer passes on `d3dx9_43`).
+  - Launch options single-quote the mount list, so `$`, quotes or backticks in a path stay literal.
+  - Existing library artwork for the shortcut is no longer overwritten on a re-run.
+
 ## v0.1.7
 
 ### Added

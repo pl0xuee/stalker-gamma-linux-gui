@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Stalker.Gamma.Factories;
 using Stalker.Gamma.Services;
 
 namespace StalkerGamma.Gui.Services;
@@ -12,7 +13,7 @@ public class UtilitiesReadyService(IServiceProvider serviceProvider)
     public (bool IsReady, string Reason) Check()
     {
         using var scope = serviceProvider.CreateScope();
-        var curl = scope.ServiceProvider.GetRequiredService<CurlService>();
+        var curl = scope.ServiceProvider.GetRequiredService<NetworkServiceFactory>().Create();
         var sevenZip = scope.ServiceProvider.GetRequiredService<SevenZipService>();
         var tar = scope.ServiceProvider.GetRequiredService<TarService>();
         var unzip = scope.ServiceProvider.GetRequiredService<UnzipService>();

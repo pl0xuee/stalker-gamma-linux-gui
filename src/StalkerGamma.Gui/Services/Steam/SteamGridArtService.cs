@@ -60,6 +60,11 @@ public class SteamGridArtService(LogService log)
 
     private static void Copy(string asset, string destination)
     {
+        // Keep artwork the user chose for this shortcut.
+        if (File.Exists(destination))
+        {
+            return;
+        }
         using var source = AssetLoader.Open(new Uri(AssetBase + asset));
         using var dest = File.Create(destination);
         source.CopyTo(dest);

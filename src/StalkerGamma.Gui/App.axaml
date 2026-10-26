@@ -102,6 +102,7 @@
         <!-- PDA rail navigation -->
         <Style Selector="ListBox.nav">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
         </Style>
         <Style Selector="ListBox.nav ListBoxItem">
@@ -113,13 +114,13 @@
             <Setter Property="FontWeight" Value="Medium"/>
             <Setter Property="Foreground" Value="{StaticResource ZoneMuted}"/>
         </Style>
-        <Style Selector="ListBox.nav ListBoxItem TextBlock.nav-icon">
+        <Style Selector="ListBox.nav ListBoxItem PathIcon.nav-icon">
             <Setter Property="Foreground" Value="{StaticResource ZoneMuted}"/>
         </Style>
         <Style Selector="ListBox.nav ListBoxItem:selected TextBlock.nav-label">
             <Setter Property="Foreground" Value="{StaticResource ZoneAmber}"/>
         </Style>
-        <Style Selector="ListBox.nav ListBoxItem:selected TextBlock.nav-icon">
+        <Style Selector="ListBox.nav ListBoxItem:selected PathIcon.nav-icon">
             <Setter Property="Foreground" Value="{StaticResource ZoneAmber}"/>
         </Style>
         <Style Selector="ListBox.nav ListBoxItem:selected /template/ ContentPresenter">
@@ -143,9 +144,29 @@
             <Setter Property="FontSize" Value="11"/>
         </Style>
 
+        <!-- Plain lists (profiles) sit on the card tone instead of Fluent's light-grey default -->
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="{StaticResource ZoneCard}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ZoneHairline}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="ListBox ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2B3527"/>
+            <Setter Property="Foreground" Value="{StaticResource ZoneAmberBright}"/>
+        </Style>
+        <Style Selector="ListBox ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#222B25"/>
+        </Style>
+        <Style Selector="ListBox ListBoxItem:selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#303B2C"/>
+        </Style>
+
         <!-- Terminal-green log pane -->
         <Style Selector="ListBox.log">
             <Setter Property="Background" Value="#0C100E"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="FontFamily" Value="monospace"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource ZoneTerminal}"/>
@@ -153,6 +174,10 @@
         <Style Selector="ListBox.log ListBoxItem">
             <Setter Property="Padding" Value="10,1"/>
             <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.log ListBoxItem:selected /template/ ContentPresenter, ListBox.log ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#16201A"/>
+            <Setter Property="Foreground" Value="{StaticResource ZoneTerminal}"/>
         </Style>
     </Application.Styles>
 </Application>

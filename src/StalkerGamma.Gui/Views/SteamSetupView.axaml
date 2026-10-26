@@ -3,46 +3,74 @@
              xmlns:vm="using:StalkerGamma.Gui.ViewModels"
              x:Class="StalkerGamma.Gui.Views.SteamSetupView"
              x:DataType="vm:SteamSetupViewModel">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
-        <StackPanel Grid.Row="0" Spacing="2">
-            <TextBlock Classes="eyebrow" Text="LAUNCH INTEGRATION"/>
-            <TextBlock Classes="h1" Text="Steam"/>
-            <TextBlock Classes="muted" Margin="0,6,0,0"
-                       Text="Adds a Steam shortcut for Mod Organizer 2, sets Proton, creates the prefix and installs prerequisites via protontricks."
-                       TextWrapping="Wrap"/>
-        </StackPanel>
+    <ScrollViewer>
+        <StackPanel Spacing="14">
+            <StackPanel Spacing="2">
+                <TextBlock Classes="eyebrow" Text="LAUNCH INTEGRATION"/>
+                <TextBlock Classes="h1" Text="Steam"/>
+                <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Text="Adds a Steam shortcut for Mod Organizer 2, sets Proton, creates the prefix and installs prerequisites via protontricks."/>
+            </StackPanel>
 
-        <WrapPanel Grid.Row="1" Margin="0,12">
-            <Button Content="Check requirements" Command="{Binding PreflightCommand}"
-                    IsEnabled="{Binding !Runner.IsBusy}" Margin="0,0,8,6"/>
-            <TextBlock Text="Shortcut name:" VerticalAlignment="Center" Margin="0,0,8,6"/>
-            <TextBox Text="{Binding AppName}" Width="180" Margin="0,0,8,6"/>
-            <TextBlock Text="Proton:" VerticalAlignment="Center" Margin="0,0,8,6"/>
-            <ComboBox ItemsSource="{Binding CompatTools}" SelectedItem="{Binding SelectedTool}"
-                      MinWidth="260" Margin="0,0,8,6"/>
-        </WrapPanel>
+            <!-- Requirements -->
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Classes="eyebrow" Text="REQUIREMENTS" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="Check again" Padding="10,4" FontSize="11"
+                                Command="{Binding PreflightCommand}" IsEnabled="{Binding !Runner.IsBusy}"/>
+                    </Grid>
+                    <TextBlock Text="{Binding PreflightText}" TextWrapping="Wrap" Classes="mono muted"/>
+                </StackPanel>
+            </Border>
 
-        <WrapPanel Grid.Row="2" Margin="0,0,0,8">
-            <CheckBox Content="I understand Steam will be closed and restarted"
-                      IsChecked="{Binding ConfirmRestart}" Margin="0,0,8,6"/>
-            <Button Content="Run Steam setup" Classes="accent"
-                    Command="{Binding RunSetupCommand}"
-                    IsEnabled="{Binding CanRunSetup}" Margin="0,0,8,6"/>
-        </WrapPanel>
-
-        <TextBlock Grid.Row="3" Text="{Binding PreflightText}" TextWrapping="Wrap"
-                   Classes="mono muted" Margin="0,0,0,8"/>
-
-        <ItemsControl Grid.Row="4" ItemsSource="{Binding Steps}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:SetupStep">
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4">
-                        <TextBlock Text="{Binding Status}" Width="24"/>
-                        <TextBlock Text="{Binding Name}"/>
-                        <TextBlock Text="{Binding Detail}" Opacity="0.7" TextWrapping="Wrap"/>
+            <!-- Setup -->
+            <Border Classes="card-hero">
+                <Grid ColumnDefinitions="Auto,*">
+                    <Rectangle Grid.Column="0" Width="4" Fill="{StaticResource ZoneAmber}"
+                               RadiusX="2" RadiusY="2" Margin="0,2,16,2"/>
+                    <StackPanel Grid.Column="1" Spacing="10">
+                        <WrapPanel>
+                            <StackPanel Spacing="4" Margin="0,0,14,8">
+                                <TextBlock Classes="muted" FontSize="11" Text="Shortcut name"/>
+                                <TextBox Text="{Binding AppName}" Width="220"/>
+                            </StackPanel>
+                            <StackPanel Spacing="4" Margin="0,0,14,8">
+                                <TextBlock Classes="muted" FontSize="11" Text="Proton"/>
+                                <ComboBox ItemsSource="{Binding CompatTools}" SelectedItem="{Binding SelectedTool}"
+                                          MinWidth="280"/>
+                            </StackPanel>
+                        </WrapPanel>
+                        <WrapPanel>
+                            <CheckBox Content="I understand Steam will be closed and restarted"
+                                      IsChecked="{Binding ConfirmRestart}" Margin="0,0,14,0"/>
+                            <Button Content="Run Steam setup" Classes="accent" Padding="18,8"
+                                    Command="{Binding RunSetupCommand}" IsEnabled="{Binding CanRunSetup}"/>
+                        </WrapPanel>
                     </StackPanel>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Progress -->
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="eyebrow" Text="STEPS"/>
+                    <ItemsControl ItemsSource="{Binding Steps}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SetupStep">
+                                <Grid ColumnDefinitions="28,*" Margin="0,3">
+                                    <TextBlock Grid.Column="0" Text="{Binding Status}" HorizontalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Spacing="1">
+                                        <TextBlock Text="{Binding Name}"/>
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextWrapping="Wrap"
+                                                   IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

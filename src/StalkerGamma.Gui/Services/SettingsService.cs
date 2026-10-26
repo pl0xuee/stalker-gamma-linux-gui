@@ -37,6 +37,12 @@ public class SettingsService(StalkerGammaSettings stalkerGammaSettings)
         stalkerGammaSettings.GammaLargeFilesRepoBranch = p.GammaLargeFilesRepoBranch;
         stalkerGammaSettings.TeivazAnomalyGunslingerRepo = p.TeivazAnomalyGunslingerRepoUrl;
         stalkerGammaSettings.TeivazAnomalyGunslingerRepoBranch = p.TeivazAnomalyGunslingerRepoBranch;
-        stalkerGammaSettings.PythonApiUrl = p.PythonApiUrl;
+        stalkerGammaSettings.StalkerGammaServerUrl = string.IsNullOrWhiteSpace(
+            Settings.StalkerGammaServerUrl
+        )
+            ? null
+            : Settings.StalkerGammaServerUrl.Trim();
+        // Opt-in per run (see InstallViewModel); never let it leak from a previous operation.
+        stalkerGammaSettings.UseAnomalyMirror = false;
     }
 }

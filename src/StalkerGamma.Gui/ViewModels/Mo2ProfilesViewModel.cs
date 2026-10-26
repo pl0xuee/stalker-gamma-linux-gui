@@ -137,7 +137,15 @@ public partial class Mo2ProfilesViewModel : ViewModelBase
         try
         {
             var ini = await File.ReadAllTextAsync(iniPath);
-            ini = SelectedProfileRx().Replace(ini, $"selected_profile=@ByteArray({SelectedProfile})");
+            if (!SelectedProfileRx().IsMatch(ini))
+            {
+                StatusText = "ModOrganizer.ini has no selected_profile entry to change";
+                return;
+            }
+            // Evaluator, not a replacement string: a profile name containing '$' would
+            // otherwise be read as a regex substitution (e.g. "$1").
+            var chosen = SelectedProfile;
+            ini = SelectedProfileRx().Replace(ini, _ => $"selected_profile=@ByteArray({chosen})");
             await Services.AtomicFile.WriteAllTextAsync(iniPath, ini);
             _log.Append($"MO2 selected profile set to {SelectedProfile}");
         }

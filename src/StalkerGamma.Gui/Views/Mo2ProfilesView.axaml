@@ -24,7 +24,11 @@
                     Command="{Binding DuplicateCommand}"/>
         </Grid>
 
-        <ListBox Grid.Row="3" ItemsSource="{Binding Profiles}"
-                 SelectedItem="{Binding SelectedProfile}"/>
+        <Grid Grid.Row="3">
+            <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"/>
+            <TextBlock Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsHitTestVisible="False" TextAlignment="Center" IsVisible="{Binding !Profiles.Count}"
+                       Text="No MO2 profiles found. Install GAMMA first, then press Refresh."/>
+        </Grid>
     </Grid>
 </UserControl>

@@ -5,17 +5,18 @@ using Microsoft.Kiota.Abstractions.Serialization;
 using System.Collections.Generic;
 using System.IO;
 using System;
-namespace Stalker.Gamma.Proxies.PythonApiClient.Models
+namespace Stalker.Gamma.Proxies.StalkerGammaCliServerClient.Models
 {
+    /// <summary>
+    /// Response headers, keyed by lowercase name.
+    /// </summary>
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
-    #pragma warning disable CS1591
     public partial class NavigateResponseDto_headers : IAdditionalDataHolder, IParsable
-    #pragma warning restore CS1591
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
         /// <summary>
-        /// Instantiates a new <see cref="global::Stalker.Gamma.Proxies.PythonApiClient.Models.NavigateResponseDto_headers"/> and sets the default values.
+        /// Instantiates a new <see cref="global::Stalker.Gamma.Proxies.StalkerGammaCliServerClient.Models.NavigateResponseDto_headers"/> and sets the default values.
         /// </summary>
         public NavigateResponseDto_headers()
         {
@@ -24,12 +25,12 @@ namespace Stalker.Gamma.Proxies.PythonApiClient.Models
         /// <summary>
         /// Creates a new instance of the appropriate class based on discriminator value
         /// </summary>
-        /// <returns>A <see cref="global::Stalker.Gamma.Proxies.PythonApiClient.Models.NavigateResponseDto_headers"/></returns>
+        /// <returns>A <see cref="global::Stalker.Gamma.Proxies.StalkerGammaCliServerClient.Models.NavigateResponseDto_headers"/></returns>
         /// <param name="parseNode">The parse node to use to read the discriminator value and create the object</param>
-        public static global::Stalker.Gamma.Proxies.PythonApiClient.Models.NavigateResponseDto_headers CreateFromDiscriminatorValue(IParseNode parseNode)
+        public static global::Stalker.Gamma.Proxies.StalkerGammaCliServerClient.Models.NavigateResponseDto_headers CreateFromDiscriminatorValue(IParseNode parseNode)
         {
             if(ReferenceEquals(parseNode, null)) throw new ArgumentNullException(nameof(parseNode));
-            return new global::Stalker.Gamma.Proxies.PythonApiClient.Models.NavigateResponseDto_headers();
+            return new global::Stalker.Gamma.Proxies.StalkerGammaCliServerClient.Models.NavigateResponseDto_headers();
         }
         /// <summary>
         /// The deserialization information for the current model

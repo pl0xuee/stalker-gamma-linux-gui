@@ -1,16 +1,17 @@
 using Microsoft.Kiota.Abstractions.Authentication;
 using Microsoft.Kiota.Http.HttpClientLibrary;
-using Stalker.Gamma.Proxies.PythonApiClient;
+using Stalker.Gamma.Models;
+using Stalker.Gamma.Proxies.StalkerGammaCliServerClient;
 
 namespace Stalker.Gamma.Factories;
 
-public class PythonApiClientFactory
+public class StalkerGammaServerClientFactory(StalkerGammaSettings settings)
 {
-    public PythonApiClient Create(string baseUrl) =>
+    public StalkerGammaCliServerClient Create() =>
         new(
             new HttpClientRequestAdapter(new AnonymousAuthenticationProvider())
             {
-                BaseUrl = baseUrl,
+                BaseUrl = settings.StalkerGammaServerUrl,
             }
         );
 }

@@ -132,12 +132,15 @@ public class AppUpdateService(IHttpClientFactory hcf)
                     $"Downloaded update failed checksum verification (expected {expectedSha256}, got {actual})"
                 );
             }
-            File.SetUnixFileMode(
-                staging,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
-                    | UnixFileMode.GroupRead | UnixFileMode.GroupExecute
-                    | UnixFileMode.OtherRead | UnixFileMode.OtherExecute
-            );
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(
+                    staging,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                        | UnixFileMode.GroupRead | UnixFileMode.GroupExecute
+                        | UnixFileMode.OtherRead | UnixFileMode.OtherExecute
+                );
+            }
             File.Move(staging, target, overwrite: true);
             return target;
         }
