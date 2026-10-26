@@ -3,7 +3,10 @@
 All notable changes to this project are documented here. The release workflow publishes the
 matching version's section as the GitHub release notes, so keep the headings as `## vX.Y.Z`.
 
-## v0.1.8
+## v0.1.9
+
+v0.1.8 was tagged but its release build failed on a CI checksum pin (not an app problem), so it was
+never published; everything below ships here.
 
 ### Added
 - **Engine updated to stalker-gamma-cli 1.40.0** (from 1.3x). What that brings:
